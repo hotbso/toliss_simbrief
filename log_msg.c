@@ -22,6 +22,30 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+#include <stdio.h>
 #include <stdarg.h>
-extern int tlsb_ofp_get(const char *userid, char *buffer, int buflen, int *retlen);
-extern void log_msg(const char *fmt, ...);
+#include <string.h>
+
+#ifdef LOCAL_DEBUGSTRING
+void
+XPLMDebugString(const char *str)
+{
+    fputs(str, stdout); fflush(stdout);
+}
+#else
+#include "XPLMUtilities.h"
+#endif
+
+void
+log_msg(const char *fmt, ...)
+{
+    char line[1024];
+
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(line, sizeof(line) - 3, fmt, ap);
+    strcat(line, "\n");
+    XPLMDebugString("tlsb: ");
+    XPLMDebugString(line);
+    va_end(ap);
+}
