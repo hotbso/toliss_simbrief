@@ -3,7 +3,7 @@
 TARGET=win.xpl sbfetch_test.exe
 
 HEADERS=$(wildcard *.h)
-OBJECTS=tlsb.o log_msg.o tlsb_ofp_get.o
+OBJECTS=tlsb.o log_msg.o tlsb_ofp_get.o tlsb_ofp_get_parse.o
 SDK=../SDK
 PLUGDIR=/e/X-Plane-11/Resources/plugins/toliss_simbrief
 
@@ -25,8 +25,8 @@ all: $(TARGET)
 .c.o: $(HEADERS)
 	$(CC) $(CFLAGS_DLL) -c $<
 
-sbfetch_test.exe: sbfetch_test.c $(OBJECTS)
-	$(CC) $(CFLAGS) -DLOCAL_DEBUGSTRING -o sbfetch_test.exe sbfetch_test.c tlsb_ofp_get.c log_msg.c -lwinhttp 
+sbfetch_test.exe: sbfetch_test.c
+	$(CC) $(CFLAGS) -DLOCAL_DEBUGSTRING -o sbfetch_test.exe sbfetch_test.c tlsb_ofp_get.c tlsb_ofp_get_parse.c log_msg.c -lwinhttp 
 
 win.xpl: $(OBJECTS)
 	$(LD) -o $(TARGET) $(LDFLAGS) $(OBJECTS) $(LIBS)

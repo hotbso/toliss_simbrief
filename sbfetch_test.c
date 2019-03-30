@@ -38,17 +38,6 @@ main(int argc, char** argv)
         exit(1);
     }
     
-    int buflen = 1024 * 1014;
-    char *ofp = malloc(buflen);
-    if (NULL == ofp) {
-        log_msg("Can't malloc");
-        exit(1);
-    }
-    
-    int ret_len;
-    int res = tlsb_ofp_get(argv[1], ofp, buflen, &ret_len);
-    if (res) {
-        write(1, ofp, ret_len);
-        exit(0);
-    }
+    tlsb_ofp_get_parse(argv[1]);
+    exit(0);
 }

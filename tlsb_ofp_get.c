@@ -98,11 +98,12 @@ int tlsb_ofp_get(const char *userid, char *buffer, int buflen, int *retlen)
 
         //log_msg("dwSize %d", dwSize);
         if (0 == dwSize) {
+            buffer[bofs] = '\0';
             *retlen = bofs;
             break;
         }
 
-        if (dwSize > buflen) {
+        if (dwSize > buflen - 1) {
             log_msg("Buffer to small");
             goto error_out;
         }

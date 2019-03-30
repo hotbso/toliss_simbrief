@@ -83,28 +83,6 @@ load_pref()
     log_msg("From pref: pilot_id: %s", pilot_id);
 }
 
-static int
-get_ofp()
-{
-    /* that should be plenty */
-    int buflen = 1024 * 1014;
-    char *ofp = malloc(buflen);
-    if (NULL == ofp) {
-        log_msg("Can't malloc");
-        return 0;
-    }
-    
-    int ret_len;
-    int res = tlsb_ofp_get(pilot_id, ofp, buflen, &ret_len);
-    if (res) {
-        log_msg("got ofp %d bytes", ret_len);
-        ofp[200] = 0;
-        log_msg(ofp);
-    }
-
-    free(ofp);
-    return 1;
-}
 
 static int
 widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t param2)
@@ -113,7 +91,7 @@ widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t p
         XPHideWidget(getofp_widget);
         return 1;
     } else if ((widget_id == getofp_btn) && (msg == xpMsg_PushButtonPressed)) {
-        get_ofp();
+        tlsb_ofp_get_parse();
         return 1;
     }
     
