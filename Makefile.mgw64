@@ -22,7 +22,7 @@ LIBS=-L$(SDK)/Libraries/Win -lXPLM_64 -lXPWidgets_64 -lwinhttp
 
 all: $(TARGET)
 
-.c.o:
+.c.o: $(HEADERS)
 	$(CC) $(CFLAGS_DLL) -c $<
 
 sbfetch_test.exe: sbfetch_test.c $(OBJECTS)

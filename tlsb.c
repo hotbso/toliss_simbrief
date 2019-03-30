@@ -47,16 +47,13 @@ SOFTWARE.
 
 #define VERSION "1.00"
 
-#if 0
-static float game_loop_cb(float elapsed_last_call,
-                float elapsed_last_loop, int counter,
-                void *in_refcon);
-#endif
-
 static char xpdir[512];
 static const char *psep;
+
+#define MENU_CONFIGURE 1
+#define MENU_GET_OFP 2
 static XPLMMenuID tlsb_menu;
-static XPWidgetID pref_widget, pref_btn;
+static XPWidgetID getofp_widget, getofp_btn;
 
 static char pref_path[512];
 static int tla3xx_detected;
@@ -89,6 +86,7 @@ load_pref()
 static int
 get_ofp()
 {
+    /* that should be plenty */
     int buflen = 1024 * 1014;
     char *ofp = malloc(buflen);
     if (NULL == ofp) {
@@ -100,7 +98,7 @@ get_ofp()
     int res = tlsb_ofp_get(pilot_id, ofp, buflen, &ret_len);
     if (res) {
         log_msg("got ofp %d bytes", ret_len);
-        ofp[100] = 0;
+        ofp[200] = 0;
         log_msg(ofp);
     }
 
@@ -111,10 +109,10 @@ get_ofp()
 static int
 widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t param2)
 {
-    if ((widget_id == pref_widget) && (msg == xpMessage_CloseButtonPushed)) {
-        XPHideWidget(pref_widget);
+    if ((widget_id == getofp_widget) && (msg == xpMessage_CloseButtonPushed)) {
+        XPHideWidget(getofp_widget);
         return 1;
-    } else if ((widget_id == pref_btn) && (msg == xpMsg_PushButtonPressed)) {
+    } else if ((widget_id == getofp_btn) && (msg == xpMsg_PushButtonPressed)) {
         get_ofp();
         return 1;
     }
@@ -126,42 +124,44 @@ widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t p
 static void
 menu_cb(void *menu_ref, void *item_ref)
 {
-    /* create gui */
-    if (NULL == pref_widget) {
-        int left = 200;
-        int top = 600;
-        int width = 200;
-        int height = 100;
+    if (item_ref == (void *)MENU_GET_OFP) {
+        /* create gui */
+        if (NULL == getofp_widget) {
+            int left = 200;
+            int top = 600;
+            int width = 200;
+            int height = 100;
 
-        pref_widget = XPCreateWidget(left, top, left + width, top - height,
-                                     0, "Toliss Simbrief", 1, NULL, xpWidgetClass_MainWindow);
-        XPSetWidgetProperty(pref_widget, xpProperty_MainWindowHasCloseBoxes, 1);
-        XPAddWidgetCallback(pref_widget, widget_cb);
-        left += 5; top -= 25;
+            getofp_widget = XPCreateWidget(left, top, left + width, top - height,
+                                         0, "Toliss Simbrief", 1, NULL, xpWidgetClass_MainWindow);
+            XPSetWidgetProperty(getofp_widget, xpProperty_MainWindowHasCloseBoxes, 1);
+            XPAddWidgetCallback(getofp_widget, widget_cb);
+            left += 5; top -= 25;
 #if 0
-        XPCreateWidget(left, top, left + width - 2 * 5, top - 15,
-                       1, "Autosave copies to keep", 0, pref_widget, xpWidgetClass_Caption);
-        top -= 20;
-        pref_slider = XPCreateWidget(left, top, left + width - 30, top - 25,
-                                     1, "tlsb_keep", 0, pref_widget, xpWidgetClass_ScrollBar);
+            XPCreateWidget(left, top, left + width - 2 * 5, top - 15,
+                           1, "Autosave copies to keep", 0, getofp_widget, xpWidgetClass_Caption);
+            top -= 20;
+            pref_slider = XPCreateWidget(left, top, left + width - 30, top - 25,
+                                         1, "tlsb_keep", 0, getofp_widget, xpWidgetClass_ScrollBar);
 
-        char buff[10];
-        snprintf(buff, sizeof(buff), "%d", tlsb_keep);
-        pref_slider_v = XPCreateWidget(left + width - 25, top, left + width - 2*5 , top - 25,
-                                       1, buff, 0, pref_widget, xpWidgetClass_Caption);
+            char buff[10];
+            snprintf(buff, sizeof(buff), "%d", tlsb_keep);
+            pref_slider_v = XPCreateWidget(left + width - 25, top, left + width - 2*5 , top - 25,
+                                           1, buff, 0, getofp_widget, xpWidgetClass_Caption);
 
-        XPSetWidgetProperty(pref_slider, xpProperty_ScrollBarMin, KEEP_MIN);
-        XPSetWidgetProperty(pref_slider, xpProperty_ScrollBarMax, KEEP_MAX);
-        XPSetWidgetProperty(pref_slider, xpProperty_ScrollBarPageAmount, 1);
-        XPSetWidgetProperty(pref_slider, xpProperty_ScrollBarSliderPosition, tlsb_keep);
+            XPSetWidgetProperty(pref_slider, xpProperty_ScrollBarMin, KEEP_MIN);
+            XPSetWidgetProperty(pref_slider, xpProperty_ScrollBarMax, KEEP_MAX);
+            XPSetWidgetProperty(pref_slider, xpProperty_ScrollBarPageAmount, 1);
+            XPSetWidgetProperty(pref_slider, xpProperty_ScrollBarSliderPosition, tlsb_keep);
 #endif
-        top -= 30;
-        pref_btn = XPCreateWidget(left, top, left + width - 2*5, top - 20,
-                                  1, "OK", 0, pref_widget, xpWidgetClass_Button);
-        XPAddWidgetCallback(pref_btn, widget_cb);
-    }
+            top -= 30;
+            getofp_btn = XPCreateWidget(left, top, left + width - 2*5, top - 20,
+                                      1, "OK", 0, getofp_widget, xpWidgetClass_Button);
+            XPAddWidgetCallback(getofp_btn, widget_cb);
+        }
 
-    XPShowWidget(pref_widget);
+        XPShowWidget(getofp_widget);
+    }
 }
 
 
@@ -188,14 +188,11 @@ XPluginStart(char *out_name, char *out_sig, char *out_desc)
     strcat(pref_path, "toliss_simbrief.prf");
     load_pref();
 
-#if 0
-    XPLMRegisterFlightLoopCallback(game_loop_cb, 30.0f, NULL);
-#endif
-
     menu = XPLMFindPluginsMenu();
     sub_menu = XPLMAppendMenuItem(menu, "Toliss Simbrief", NULL, 1);
     tlsb_menu = XPLMCreateMenu("Toliss Simbrief", menu, sub_menu, menu_cb, NULL);
-    XPLMAppendMenuItem(tlsb_menu, "Configure", NULL, 0);
+    XPLMAppendMenuItem(tlsb_menu, "Configure", (void *)MENU_CONFIGURE, 0);
+    XPLMAppendMenuItem(tlsb_menu, "Get OFP", (void *)MENU_GET_OFP, 0);
     return 1;
 }
 
@@ -250,57 +247,3 @@ XPluginReceiveMessage(XPLMPluginID in_from, long in_msg, void *in_param)
         break;
     }
 }
-
-#if 0
-static float
-game_loop_cb(float elapsed_last_call,
-             float elapsed_last_loop, int counter, void *in_refcon)
-{
-    float loop_delay = 30.0f;
-    struct stat stat_buf;
-    time_t now = time(NULL);
-
-    if (tlsb_error_disabled || ('\0' == autosave_file[0]))
-        goto done;
-
-    if (0 != stat(autosave_file, &stat_buf))
-        goto done;
-
-    /* no idea whether we run in the same thread as the writer, so
-       hopefully it is finished after 30 s */
-    if (now - stat_buf.st_mtime > 30) {
-        char new_name[1024];
-        char ts[TS_LENGTH];
-
-        struct tm *tm = localtime(&stat_buf.st_mtime);
-
-        strcpy(new_name, autosave_file);
-        char *s = strrchr(new_name, psep[0]);
-        snprintf(ts, TS_LENGTH, "%02d%02d%02d_%02d%02d", tm->tm_year-100, tm->tm_mon+1,
-                 tm->tm_mday, tm->tm_hour, tm->tm_min);
-        sprintf(s+1, "%s_%s%s", autosave_base, ts, autosave_ext);
-
-        if (rename(autosave_file, new_name) < 0) {
-            log_msg("Cannot rename autosave file to '%s': %s", new_name, strerror(errno));
-            tlsb_error_disabled = 1;
-            goto done;
-        }
-
-        log_msg("Renamed autosave file to '%s'", new_name);
-
-        if (!alloc_ts_list())
-            goto done;
-
-        ts_head = (ts_head + 1) % max_ts_list;
-        char *d = ts_list + (TS_LENGTH * ts_head);
-        memcpy(d, ts, TS_LENGTH);
-        n_ts_list++;
-        log_msg("After insert of TS ts_head: %d, ts_tail: %d, n_ts_list: %d", ts_head, ts_tail, n_ts_list);
-
-        delete_tail();
-    }
-
-   done:
-    return loop_delay;
-}
-#endif
