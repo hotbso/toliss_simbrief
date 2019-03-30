@@ -30,12 +30,6 @@ SOFTWARE.
 
 #include "tlsb.h"
 
-void
-__imp_XPLMDebugString(const char *str)
-{
-    fputs(str, stdout); fflush(stdout);
-}
-
 int
 main(int argc, char** argv)
 {

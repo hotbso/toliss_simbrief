@@ -1,9 +1,9 @@
 .SUFFIXES: .obj
 
-TARGET=sbfetch_test.exe
+TARGET=win.xpl sbfetch_test.exe
 
 HEADERS=$(wildcard *.h)
-OBJECTS=log_msg.o tls_ofp_get.o
+OBJECTS=tlsb.o log_msg.o tlsb_ofp_get.o
 SDK=../SDK
 PLUGDIR=/e/X-Plane-11/Resources/plugins/toliss_simbrief
 
@@ -26,7 +26,7 @@ all: $(TARGET)
 	$(CC) $(CFLAGS_DLL) -c $<
 
 sbfetch_test.exe: sbfetch_test.o $(OBJECTS)
-	$(CC) $(CFLAGS) -DLOCAL_DEBUGSTRING -o sbfetch_test.exe sbfetch_test.c tls_ofp_get.c log_msg.c -lwinhttp 
+	$(CC) $(CFLAGS) -DLOCAL_DEBUGSTRING -o sbfetch_test.exe sbfetch_test.c tlsb_ofp_get.c log_msg.c -lwinhttp 
 
 win.xpl: $(OBJECTS)
 	$(LD) -o $(TARGET) $(LDFLAGS) $(OBJECTS) $(LIBS)
@@ -37,10 +37,9 @@ clean:
 # install the just compiled target
 install: $(TARGET)
 	mkdir -p "$(PLUGDIR)/64"
-	cp -p $(TARGET) "$(PLUGDIR)/64"
+	cp -p win.xpl "$(PLUGDIR)/64"
 
 # create the whole plugin directory
 plugin: $(TARGET)
 	mkdir -p "$(PLUGDIR)/64"
-	cp -p $(TARGET) "$(PLUGDIR)/64"
-	cp -p *.cfg *.pdf "$(PLUGDIR)"
+	cp -p win.xpl "$(PLUGDIR)/64"
