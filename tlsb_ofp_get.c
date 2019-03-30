@@ -96,7 +96,7 @@ int tlsb_ofp_get(const char *userid, char *buffer, int buflen, int *retlen)
             goto error_out;
         }
 
-        log_msg("dwSize %d", dwSize);
+        //log_msg("dwSize %d", dwSize);
         if (0 == dwSize) {
             *retlen = bofs;
             break;

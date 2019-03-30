@@ -86,6 +86,27 @@ load_pref()
     log_msg("From pref: pilot_id: %s", pilot_id);
 }
 
+static int
+get_ofp()
+{
+    int buflen = 1024 * 1014;
+    char *ofp = malloc(buflen);
+    if (NULL == ofp) {
+        log_msg("Can't malloc");
+        return 0;
+    }
+    
+    int ret_len;
+    int res = tlsb_ofp_get(pilot_id, ofp, buflen, &ret_len);
+    if (res) {
+        log_msg("got ofp %d bytes", ret_len);
+        ofp[100] = 0;
+        log_msg(ofp);
+    }
+
+    free(ofp);
+    return 1;
+}
 
 static int
 widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t param2)
@@ -93,26 +114,9 @@ widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t p
     if ((widget_id == pref_widget) && (msg == xpMessage_CloseButtonPushed)) {
         XPHideWidget(pref_widget);
         return 1;
-#if 0
     } else if ((widget_id == pref_btn) && (msg == xpMsg_PushButtonPressed)) {
-        int valid;
-        int k = XPGetWidgetProperty(pref_slider, xpProperty_ScrollBarSliderPosition, &valid);
-        if (valid)
-            tlsb_keep = k;
-
-        XPHideWidget(pref_widget);
-        log_msg("tlsb_keep set to %d", tlsb_keep);
-        delete_tail();
+        get_ofp();
         return 1;
-
-    } else if ((msg == xpMsg_ScrollBarSliderPositionChanged) && ((XPWidgetID)param1 == pref_slider)) {
-        int k = XPGetWidgetProperty(pref_slider, xpProperty_ScrollBarSliderPosition, NULL);
-
-        char buff[10];
-        snprintf(buff, sizeof(buff), "%d", k);
-        XPSetWidgetDescriptor(pref_slider_v, buff);
-        return 1;
-#endif
     }
     
     return 0;
@@ -224,8 +228,11 @@ XPluginReceiveMessage(XPLMPluginID in_from, long in_msg, void *in_param)
     switch (in_msg) {
         case XPLM_MSG_PLANE_LOADED:
             if (in_param == 0) {
+                char acf_path[512];
                 char acf_file[256];
 
+                XPLMGetNthAircraftModel(XPLM_USER_AIRCRAFT, acf_file, acf_path);
+                log_msg(acf_file);
 
                 if (0 == strncmp(acf_file, "a319", 4)) {
                     XPLMGetSystemPath(acf_file);

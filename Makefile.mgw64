@@ -25,7 +25,7 @@ all: $(TARGET)
 .c.o:
 	$(CC) $(CFLAGS_DLL) -c $<
 
-sbfetch_test.exe: sbfetch_test.o $(OBJECTS)
+sbfetch_test.exe: sbfetch_test.c $(OBJECTS)
 	$(CC) $(CFLAGS) -DLOCAL_DEBUGSTRING -o sbfetch_test.exe sbfetch_test.c tlsb_ofp_get.c log_msg.c -lwinhttp 
 
 win.xpl: $(OBJECTS)
