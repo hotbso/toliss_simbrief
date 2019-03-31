@@ -45,6 +45,7 @@ main(int argc, char** argv)
 
         L(aircraft_icao);
         L(max_passengers);
+        L(fuel_plan_ramp);
     } else {
         log_msg(ofp_info.errmsg);
     }

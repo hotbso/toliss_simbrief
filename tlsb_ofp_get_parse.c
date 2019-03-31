@@ -94,30 +94,28 @@ tlsb_ofp_get_parse(const char *pilot_id, ofp_info_t *ofp_info)
     }
 #endif
     if (0 == res) {
+        strcpy(ofp_info->status, "Network error");
         return 0;
     }
 
     log_msg("got ofp %d bytes", ofp_len);
-    //ofp[200] = 0;
-    //log_msg(ofp);
 
-
-    int fetch_s, fetch_e, status_s, status_e;
-    if (get_element_text(ofp, 0, ofp_len, "fetch", &fetch_s, &fetch_e)
-        && get_element_text(ofp, fetch_s, fetch_e, "status", &status_s, &status_e)) {
-        if (strncmp(ofp + status_s, "Success", 7)) {
-            strncpy(ofp_info->errmsg, ofp + status_s, MIN(sizeof(ofp_info->errmsg), status_e - status_s));
+    int out_s, out_e;
+    if (POSITION("fetch")) {
+        EXTRACT("status", status);
+        if (strcmp(ofp_info->status, "Success")) {
             goto out;
         }
     }
 
-    int out_s, out_e;
     if (POSITION("aircraft")) {
         EXTRACT("icaocode", aircraft_icao);
         EXTRACT("max_passengers", max_passengers);
     }
 
-    ofp_info->status = 1;
+    if (POSITION("fuel")) {
+        EXTRACT("plan_ramp", fuel_plan_ramp);
+    }
 
 out:
     free(ofp);

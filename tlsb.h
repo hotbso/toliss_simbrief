@@ -26,11 +26,11 @@ SOFTWARE.
 
 typedef struct _ofp_info
 {
-    int status;
+    char status[100];
     char errmsg[100];
     char aircraft_icao[10];
     char max_passengers[10];
-    float fuel_plan_ramp;
+    char fuel_plan_ramp[10];
 } ofp_info_t;
 
 extern int tlsb_ofp_get(const char *userid, char *buffer, int buflen, int *retlen);
