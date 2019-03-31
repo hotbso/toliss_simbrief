@@ -53,7 +53,7 @@ static const char *psep;
 #define MENU_CONFIGURE 1
 #define MENU_GET_OFP 2
 static XPLMMenuID tlsb_menu;
-static XPWidgetID getofp_widget, getofp_btn;
+static XPWidgetID getofp_widget, getofp_btn, pilot_id_input;
 
 static char pref_path[512];
 static int tla3xx_detected;
@@ -91,6 +91,8 @@ widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t p
         XPHideWidget(getofp_widget);
         return 1;
     } else if ((widget_id == getofp_btn) && (msg == xpMsg_PushButtonPressed)) {
+        XPGetWidgetDescriptor(pilot_id_input, pilot_id, sizeof(pilot_id));
+        
         ofp_info_t ofp_info;
         tlsb_ofp_get_parse(pilot_id, &ofp_info);
         tlsb_dump_ofp_info(&ofp_info);
@@ -108,18 +110,27 @@ menu_cb(void *menu_ref, void *item_ref)
         /* create gui */
         if (NULL == getofp_widget) {
             int left = 200;
-            int top = 600;
-            int width = 200;
-            int height = 100;
+            int top = 800;
+            int width = 400;
+            int height = 400;
 
             getofp_widget = XPCreateWidget(left, top, left + width, top - height,
                                          0, "Toliss Simbrief", 1, NULL, xpWidgetClass_MainWindow);
             XPSetWidgetProperty(getofp_widget, xpProperty_MainWindowHasCloseBoxes, 1);
             XPAddWidgetCallback(getofp_widget, widget_cb);
             left += 5; top -= 25;
-#if 0
             XPCreateWidget(left, top, left + width - 2 * 5, top - 15,
-                           1, "Autosave copies to keep", 0, getofp_widget, xpWidgetClass_Caption);
+                           1, "Pilot Id", 0, getofp_widget, xpWidgetClass_Caption);
+
+            int left1 = left + 80;
+            pilot_id_input = XPCreateWidget(left1, top, left1 +  50, top - 15,
+                                            1, pilot_id, 0, getofp_widget, xpWidgetClass_TextField);
+            XPSetWidgetProperty(pilot_id_input, xpProperty_TextFieldType, xpTextEntryField);
+            XPSetWidgetProperty(pilot_id_input, xpProperty_MaxCharacters, sizeof(pilot_id) -1);
+            top -= 20;
+
+#if 0
+
             top -= 20;
             pref_slider = XPCreateWidget(left, top, left + width - 30, top - 25,
                                          1, "tlsb_keep", 0, getofp_widget, xpWidgetClass_ScrollBar);
@@ -140,6 +151,7 @@ menu_cb(void *menu_ref, void *item_ref)
             XPAddWidgetCallback(getofp_btn, widget_cb);
         }
 
+        XPSetWidgetDescriptor(pilot_id_input, pilot_id);
         XPShowWidget(getofp_widget);
     }
 }
@@ -148,8 +160,6 @@ menu_cb(void *menu_ref, void *item_ref)
 PLUGIN_API int
 XPluginStart(char *out_name, char *out_sig, char *out_desc)
 {
-    XPLMMenuID menu;
-    int sub_menu;
 
     /* Always use Unix-native paths on the Mac! */
     XPLMEnableFeature("XPLM_USE_NATIVE_PATHS", 1);
@@ -168,11 +178,6 @@ XPluginStart(char *out_name, char *out_sig, char *out_desc)
     strcat(pref_path, "toliss_simbrief.prf");
     load_pref();
 
-    menu = XPLMFindPluginsMenu();
-    sub_menu = XPLMAppendMenuItem(menu, "Toliss Simbrief", NULL, 1);
-    tlsb_menu = XPLMCreateMenu("Toliss Simbrief", menu, sub_menu, menu_cb, NULL);
-    XPLMAppendMenuItem(tlsb_menu, "Configure", (void *)MENU_CONFIGURE, 0);
-    XPLMAppendMenuItem(tlsb_menu, "Get OFP", (void *)MENU_GET_OFP, 0);
     return 1;
 }
 
@@ -222,7 +227,13 @@ XPluginReceiveMessage(XPLMPluginID in_from, long in_msg, void *in_param)
 
                     log_msg("Detected ToLiss A319");
                     tla3xx_detected = 1;
-                }
+
+                    XPLMMenuID menu = XPLMFindPluginsMenu();
+                    int sub_menu = XPLMAppendMenuItem(menu, "Toliss Simbrief", NULL, 1);
+                    tlsb_menu = XPLMCreateMenu("Toliss Simbrief", menu, sub_menu, menu_cb, NULL);
+                    XPLMAppendMenuItem(tlsb_menu, "Configure", (void *)MENU_CONFIGURE, 0);
+                    XPLMAppendMenuItem(tlsb_menu, "Get OFP", (void *)MENU_GET_OFP, 0);
+               }
             }
         break;
     }
