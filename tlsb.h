@@ -23,6 +23,16 @@ SOFTWARE.
 */
 
 #include <stdarg.h>
+
+typedef struct _ofp_info
+{
+    int status;
+    char errmsg[100];
+    char aircraft_icao[10];
+    char max_passengers[10];
+    float fuel_plan_ramp;
+} ofp_info_t;
+
 extern int tlsb_ofp_get(const char *userid, char *buffer, int buflen, int *retlen);
 extern void log_msg(const char *fmt, ...);
-extern int tlsb_ofp_get_parse(const char *pilot_id);
+extern int tlsb_ofp_get_parse(const char *pilot_id, ofp_info_t *ofp_info);

@@ -55,6 +55,16 @@ get_element_text(char *xml, int start_ofs, int end_ofs, const char *tag, int *te
     return 1;
 }
 
+#define POSITION(tag) \
+get_element_text(ofp, 0, ofp_len, tag, &out_s, &out_e)
+
+#define EXTRACT(tag, field) \
+do { \
+    int s, e; \
+    if (get_element_text(ofp, out_s, out_e, tag, &s, &e)) { \
+        strncpy(ofp_info->field, ofp + s, MIN(sizeof(ofp_info->field), e - s)); \
+    } \
+} while (0)
 
 int
 tlsb_ofp_get_parse(const char *pilot_id, ofp_info_t *ofp_info)
@@ -101,17 +111,10 @@ tlsb_ofp_get_parse(const char *pilot_id, ofp_info_t *ofp_info)
         }
     }
 
-    int aircraft_s, aircraft_e;
-    if (get_element_text(ofp, 0, ofp_len, "aircraft", &aircraft_s, &aircraft_e)) {
-        int s, e;
-        if (get_element_text(ofp, aircraft_s, aircraft_e, "icaocode", &s, &e)) {
-            strncpy(ofp_info->aircraft_icao, ofp + s, MIN(sizeof(ofp_info->aircraft_icao), e - s));
-        }
-
-        if (get_element_text(ofp, aircraft_s, aircraft_e, "max_passengers", &s, &e)) {
-            strncpy(ofp_info->max_passengers, ofp + s, MIN(sizeof(ofp_info->max_passengers), e - s));
-        }
-
+    int out_s, out_e;
+    if (POSITION("aircraft")) {
+        EXTRACT("icaocode", aircraft_icao);
+        EXTRACT("max_passengers", max_passengers);
     }
 
     ofp_info->status = 1;

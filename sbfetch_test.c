@@ -37,7 +37,17 @@ main(int argc, char** argv)
         log_msg("missing argument");
         exit(1);
     }
-    
-    tlsb_ofp_get_parse(argv[1]);
+
+    ofp_info_t ofp_info;
+    tlsb_ofp_get_parse(argv[1], &ofp_info);
+    if (ofp_info.status) {
+#define L(field) log_msg(#field ": %s", ofp_info.field)
+
+        L(aircraft_icao);
+        L(max_passengers);
+    } else {
+        log_msg(ofp_info.errmsg);
+    }
+
     exit(0);
 }
