@@ -91,7 +91,9 @@ widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t p
         XPHideWidget(getofp_widget);
         return 1;
     } else if ((widget_id == getofp_btn) && (msg == xpMsg_PushButtonPressed)) {
-        tlsb_ofp_get_parse();
+        ofp_info_t ofp_info;
+        tlsb_ofp_get_parse(pilot_id, &ofp_info);
+        tlsb_dump_ofp_info(&ofp_info);
         return 1;
     }
     

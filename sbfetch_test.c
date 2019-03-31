@@ -40,15 +40,7 @@ main(int argc, char** argv)
 
     ofp_info_t ofp_info;
     tlsb_ofp_get_parse(argv[1], &ofp_info);
-    if (ofp_info.status) {
-#define L(field) log_msg(#field ": %s", ofp_info.field)
-
-        L(aircraft_icao);
-        L(max_passengers);
-        L(fuel_plan_ramp);
-    } else {
-        log_msg(ofp_info.errmsg);
-    }
+    tlsb_dump_ofp_info(&ofp_info);
 
     exit(0);
 }

@@ -30,6 +30,23 @@ SOFTWARE.
 
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
 
+void
+tlsb_dump_ofp_info(ofp_info_t *ofp_info)
+{
+    if (ofp_info->status) {
+#define L(field) log_msg(#field ": %s", ofp_info->field)
+
+        L(aircraft_icao);
+        L(origin);
+        L(destination);
+        L(ci);
+        L(max_passengers);
+        L(fuel_plan_ramp);
+    } else {
+        log_msg(ofp_info->errmsg);
+    }
+}
+
 static int
 get_element_text(char *xml, int start_ofs, int end_ofs, const char *tag, int *text_start, int *text_end)
 {
@@ -80,7 +97,7 @@ tlsb_ofp_get_parse(const char *pilot_id, ofp_info_t *ofp_info)
     }
 
     int ofp_len;
-#if 0
+#if 1
     int res = tlsb_ofp_get(pilot_id, ofp, buflen, &ofp_len);
 #else
     FILE *f = fopen("xml.fetcher.xml", "r");
@@ -115,6 +132,19 @@ tlsb_ofp_get_parse(const char *pilot_id, ofp_info_t *ofp_info)
 
     if (POSITION("fuel")) {
         EXTRACT("plan_ramp", fuel_plan_ramp);
+    }
+
+    if (POSITION("origin")) {
+        EXTRACT("icao_code", origin);
+    }
+    
+    if (POSITION("destination")) {
+        EXTRACT("icao_code", destination);
+    }
+
+    if (POSITION("general")) {
+        EXTRACT("costindex", ci);
+        EXTRACT("initial_altitude", altitude);
     }
 
 out:
