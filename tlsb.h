@@ -26,6 +26,7 @@ SOFTWARE.
 
 typedef struct _ofp_info
 {
+    int valid;
     char status[100];
     char errmsg[100];
     char aircraft_icao[10];
