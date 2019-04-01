@@ -59,7 +59,9 @@ static XPLMMenuID tlsb_menu;
 static XPWidgetID getofp_widget, display_widget, getofp_btn, pilot_id_input,
                   status_line, xfer_load_btn;
 static ofp_info_t ofp_info;
-static XPLMDataRef no_pax_dr, pax_distrib_dr, aft_cargo_dr, fwd_cargo_dr, write_fob_dr;
+static XPLMDataRef no_pax_dr, pax_distrib_dr, aft_cargo_dr, fwd_cargo_dr, write_fob_dr,
+                   set_weight_dr;
+
 static int dr_mapped;
 static int error_disabled;
 
@@ -72,7 +74,7 @@ map_datarefs()
 {
     if (dr_mapped)
         return;
-    
+
     dr_mapped = 1;
 
     if (NULL == (no_pax_dr = XPLMFindDataRef("AirbusFBW/NoPax"))) goto err;
@@ -80,9 +82,10 @@ map_datarefs()
     if (NULL == (aft_cargo_dr = XPLMFindDataRef("AirbusFBW/AftCargo")))goto err;
     if (NULL == (fwd_cargo_dr = XPLMFindDataRef("AirbusFBW/FwdCargo"))) goto err;
     if (NULL == (write_fob_dr = XPLMFindDataRef("AirbusFBW/WriteFOB"))) goto err;
+//    if (NULL == (set_weight_dr = XPLMFindDataRef("AirbusFBW/SetWeightAndCG"))) goto err;
     return;
-    
-err:  
+
+err:
     error_disabled = 1;
     log_msg("Can't map all datarefs, disabled");
 }
@@ -91,10 +94,17 @@ static void
 xfer_load_data()
 {
     map_datarefs();
+    if (error_disabled)
+        return;
+
     log_msg("Xfer load data to ISCS");
     XPLMSetDatai(no_pax_dr, atoi(ofp_info.pax_count));
     XPLMSetDataf(pax_distrib_dr, 0.5);
     XPLMSetDataf(write_fob_dr, atof(ofp_info.fuel_plan_ramp));
+    float cargo = 0.5 * atof(ofp_info.cargo);
+    XPLMSetDataf(fwd_cargo_dr, cargo);
+    XPLMSetDataf(aft_cargo_dr, cargo);
+    //XPLMSetDatai(set_weight_dr, 1);
 }
 
 static void
@@ -122,34 +132,6 @@ load_pref()
 }
 
 
-static void
-draw_ofp()
-{
-    int left, top;
-    XPGetWidgetGeometry(display_widget, &left, &top, NULL, NULL);
-    static float bg_color[] = { 0.0, 0.0, 0.0 };
-    static float data_color[] = { 0.0, 0.5, 0.0 };
-
-#define D(field) \
-do { \
-    top -= 15; \
-    XPLMDrawString(bg_color, left, top, #field, NULL, xplmFont_Proportional); \
-    /* if (ofp_info.field[0]) */ XPLMDrawString(data_color, left + 200, top, ofp_info.field, NULL, xplmFont_Basic); \
-} while (0)
-
-    D(aircraft_icao);
-    D(origin);
-    D(destination);
-    D(ci);
-    D(max_passengers);
-    D(fuel_plan_ramp);
-    D(oew);
-    D(pax_count);
-    D(cargo);
-    D(payload);
-}
-
-
 static int
 widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t param2)
 {
@@ -157,39 +139,61 @@ widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t p
         XPHideWidget(getofp_widget);
         return 1;
     }
-    
+
     if (error_disabled)
         return 1;
 
     if ((widget_id == getofp_btn) && (msg == xpMsg_PushButtonPressed)) {
         XPGetWidgetDescriptor(pilot_id_input, pilot_id, sizeof(pilot_id));
-        
+
         XPSetWidgetDescriptor(status_line, "Fetching...");
         tlsb_ofp_get_parse(pilot_id, &ofp_info);
         tlsb_dump_ofp_info(&ofp_info);
         XPSetWidgetDescriptor(status_line, "Fetching...");
-        
+
         if (strcmp(ofp_info.status, "Success")) {
             XPSetWidgetDescriptor(status_line, ofp_info.status);
         } else if (strcmp(ofp_info.aircraft_icao, "A319")) {
             XPSetWidgetDescriptor(status_line, "OFP is not for A319");
             memset(&ofp_info, 0, sizeof(ofp_info));
         } else {
-            XPSetWidgetDescriptor(status_line, "");        
+            XPSetWidgetDescriptor(status_line, "");
             ofp_info.valid = 1;
         }
-        
-        draw_ofp();
-        return 1;
+
     }
-    
+
     if ((widget_id == xfer_load_btn) && (msg == xpMsg_PushButtonPressed)) {
         xfer_load_data();
+        return 1;
     }
 
     /* draw the embedded custom widget */
     if ((widget_id == display_widget) && (xpMsg_Draw == msg)) {
-        draw_ofp();
+        static float label_color[] = { 0.0, 0.0, 0.0 };
+        static float xfer_color[] = { 0.0, 0.5, 0.0 };
+        static float bg_color[] = { 0.0, 0.3, 0.3 };
+
+        int left, top;
+        XPGetWidgetGeometry(display_widget, &left, &top, NULL, NULL);
+
+#define D(field) \
+do { \
+    top -= 15; \
+    XPLMDrawString(label_color, left, top, #field, NULL, xplmFont_Proportional); \
+    /* if (ofp_info.field[0]) */ XPLMDrawString(xfer_color, left + 200, top, ofp_info.field, NULL, xplmFont_Basic); \
+} while (0)
+
+        D(aircraft_icao);
+        D(origin);
+        D(destination);
+        D(ci);
+        D(max_passengers);
+        D(fuel_plan_ramp);
+        D(oew);
+        D(pax_count);
+        D(cargo);
+        D(payload);
 		return 1;
 	}
 
@@ -222,8 +226,9 @@ menu_cb(void *menu_ref, void *item_ref)
             XPSetWidgetProperty(pilot_id_input, xpProperty_TextFieldType, xpTextEntryField);
             XPSetWidgetProperty(pilot_id_input, xpProperty_MaxCharacters, sizeof(pilot_id) -1);
 
-            top -= 20;
-            getofp_btn = XPCreateWidget(left + width/2 - 30, top, left + width/2 + 30, top - 30,
+            left1 += 65;
+            int top1 = top - 7;
+            getofp_btn = XPCreateWidget(left1, top1, left1 + 60, top1 - 30,
                                       1, "Fetch", 0, getofp_widget, xpWidgetClass_Button);
             XPAddWidgetCallback(getofp_btn, widget_cb);
 
@@ -235,9 +240,9 @@ menu_cb(void *menu_ref, void *item_ref)
             display_widget = XPCreateCustomWidget(left + 10, top, left + 380, top - 200,
                                                    1, "", 0, getofp_widget, widget_cb);
             top -= 220;
-            xfer_load_btn = XPCreateWidget(left + width/2 - 50, top, left + width/2 + 50, top - 30,
+            xfer_load_btn = XPCreateWidget(left + width/2 - 70, top, left + width/2 + 70, top - 30,
                                       1, "Xfer Load data to ISCS", 0, getofp_widget, xpWidgetClass_Button);
-            XPAddWidgetCallback(xfer_load_btn, widget_cb);            
+            XPAddWidgetCallback(xfer_load_btn, widget_cb);
         }
 
         XPSetWidgetDescriptor(pilot_id_input, pilot_id);
