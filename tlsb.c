@@ -57,12 +57,45 @@ static const char *psep;
 #define MENU_GET_OFP 2
 static XPLMMenuID tlsb_menu;
 static XPWidgetID getofp_widget, display_widget, getofp_btn, pilot_id_input,
-                  status_line;
+                  status_line, xfer_load_btn;
 static ofp_info_t ofp_info;
+static XPLMDataRef no_pax_dr, pax_distrib_dr, aft_cargo_dr, fwd_cargo_dr, write_fob_dr;
+static int dr_mapped;
+static int error_disabled;
 
 static char pref_path[512];
 static int tla3xx_detected;
 static char pilot_id[20];
+
+static void
+map_datarefs()
+{
+    if (dr_mapped)
+        return;
+    
+    dr_mapped = 1;
+
+    if (NULL == (no_pax_dr = XPLMFindDataRef("AirbusFBW/NoPax"))) goto err;
+    if (NULL == (pax_distrib_dr = XPLMFindDataRef("AirbusFBW/PaxDistrib"))) goto err;
+    if (NULL == (aft_cargo_dr = XPLMFindDataRef("AirbusFBW/AftCargo")))goto err;
+    if (NULL == (fwd_cargo_dr = XPLMFindDataRef("AirbusFBW/FwdCargo"))) goto err;
+    if (NULL == (write_fob_dr = XPLMFindDataRef("AirbusFBW/WriteFOB"))) goto err;
+    return;
+    
+err:  
+    error_disabled = 1;
+    log_msg("Can't map all datarefs, disabled");
+}
+
+static void
+xfer_load_data()
+{
+    map_datarefs();
+    log_msg("Xfer load data to ISCS");
+    XPLMSetDatai(no_pax_dr, atoi(ofp_info.pax_count));
+    XPLMSetDataf(pax_distrib_dr, 0.5);
+    XPLMSetDataf(write_fob_dr, atof(ofp_info.fuel_plan_ramp));
+}
 
 static void
 save_pref()
@@ -123,7 +156,12 @@ widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t p
     if ((widget_id == getofp_widget) && (msg == xpMessage_CloseButtonPushed)) {
         XPHideWidget(getofp_widget);
         return 1;
-    } else if ((widget_id == getofp_btn) && (msg == xpMsg_PushButtonPressed)) {
+    }
+    
+    if (error_disabled)
+        return 1;
+
+    if ((widget_id == getofp_btn) && (msg == xpMsg_PushButtonPressed)) {
         XPGetWidgetDescriptor(pilot_id_input, pilot_id, sizeof(pilot_id));
         
         XPSetWidgetDescriptor(status_line, "Fetching...");
@@ -143,6 +181,10 @@ widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t p
         
         draw_ofp();
         return 1;
+    }
+    
+    if ((widget_id == xfer_load_btn) && (msg == xpMsg_PushButtonPressed)) {
+        xfer_load_data();
     }
 
     /* draw the embedded custom widget */
@@ -192,6 +234,10 @@ menu_cb(void *menu_ref, void *item_ref)
             top -= 20;
             display_widget = XPCreateCustomWidget(left + 10, top, left + 380, top - 200,
                                                    1, "", 0, getofp_widget, widget_cb);
+            top -= 220;
+            xfer_load_btn = XPCreateWidget(left + width/2 - 50, top, left + width/2 + 50, top - 30,
+                                      1, "Xfer Load data to ISCS", 0, getofp_widget, xpWidgetClass_Button);
+            XPAddWidgetCallback(xfer_load_btn, widget_cb);            
         }
 
         XPSetWidgetDescriptor(pilot_id_input, pilot_id);
