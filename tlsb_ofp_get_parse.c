@@ -42,11 +42,16 @@ tlsb_dump_ofp_info(ofp_info_t *ofp_info)
         L(ci);
         L(max_passengers);
         L(fuel_plan_ramp);
+        L(oew);
+        L(pax_count);
+        L(cargo);
+        L(payload);
     } else {
         log_msg(ofp_info->errmsg);
     }
 }
 
+/* super simple xml extractor */
 static int
 get_element_text(char *xml, int start_ofs, int end_ofs, const char *tag, int *text_start, int *text_end)
 {
@@ -60,10 +65,12 @@ get_element_text(char *xml, int start_ofs, int end_ofs, const char *tag, int *te
 
     s += strlen(stag);
 
+    /* don't run over end_ofs */
     int c = xml[end_ofs];
     xml[end_ofs] = '\0';
     char *e = strstr(s, etag);
     xml[end_ofs] = c;
+
     if (NULL == e)
         return 0;
 
@@ -137,7 +144,7 @@ tlsb_ofp_get_parse(const char *pilot_id, ofp_info_t *ofp_info)
     if (POSITION("origin")) {
         EXTRACT("icao_code", origin);
     }
-    
+
     if (POSITION("destination")) {
         EXTRACT("icao_code", destination);
     }
@@ -145,6 +152,13 @@ tlsb_ofp_get_parse(const char *pilot_id, ofp_info_t *ofp_info)
     if (POSITION("general")) {
         EXTRACT("costindex", ci);
         EXTRACT("initial_altitude", altitude);
+    }
+
+    if (POSITION("weights")) {
+        EXTRACT("oew", oew);
+        EXTRACT("pax_count", pax_count);
+        EXTRACT("cargo", cargo);
+        EXTRACT("payload", payload);
     }
 
 out:

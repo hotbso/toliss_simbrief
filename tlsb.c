@@ -35,6 +35,9 @@ SOFTWARE.
 
 #include "XPLMPlugin.h"
 #include "XPLMPlanes.h"
+#include "XPLMDisplay.h"
+#include "XPLMGraphics.h"
+#include "XPLMDataAccess.h"
 #include "XPLMUtilities.h"
 #include "XPLMProcessing.h"
 #include "XPLMMenus.h"
@@ -53,7 +56,8 @@ static const char *psep;
 #define MENU_CONFIGURE 1
 #define MENU_GET_OFP 2
 static XPLMMenuID tlsb_menu;
-static XPWidgetID getofp_widget, getofp_btn, pilot_id_input;
+static XPWidgetID getofp_widget, display_widget, getofp_btn, pilot_id_input;
+static ofp_info_t ofp_info;
 
 static char pref_path[512];
 static int tla3xx_detected;
@@ -92,13 +96,39 @@ widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t p
         return 1;
     } else if ((widget_id == getofp_btn) && (msg == xpMsg_PushButtonPressed)) {
         XPGetWidgetDescriptor(pilot_id_input, pilot_id, sizeof(pilot_id));
-        
-        ofp_info_t ofp_info;
+
         tlsb_ofp_get_parse(pilot_id, &ofp_info);
         tlsb_dump_ofp_info(&ofp_info);
         return 1;
     }
-    
+
+    /* draw the embedded custom widget */
+    if ((widget_id == display_widget) && (xpMsg_Draw == msg)) {
+		int left, top;
+		XPGetWidgetGeometry(widget_id, &left, &top, NULL, NULL);
+		static float bg_color[] = { 0.0, 0.0, 0.0 };
+		static float data_color[] = { 0.0, 1.0, 0.0 };
+
+#define D(field) \
+do { \
+        top -= 15; \
+		XPLMDrawString(bg_color, left, top, #field, NULL, xplmFont_Proportional); \
+		/* if (ofp_info.field[0]) */ XPLMDrawString(data_color, left + 200, top, ofp_info.field, NULL, xplmFont_Basic); \
+} while (0)
+
+        D(aircraft_icao);
+        D(origin);
+        D(destination);
+        D(ci);
+        D(max_passengers);
+        D(fuel_plan_ramp);
+        D(oew);
+        D(pax_count);
+        D(cargo);
+        D(payload);
+		return 1;
+	}
+
     return 0;
 }
 
@@ -127,30 +157,17 @@ menu_cb(void *menu_ref, void *item_ref)
                                             1, pilot_id, 0, getofp_widget, xpWidgetClass_TextField);
             XPSetWidgetProperty(pilot_id_input, xpProperty_TextFieldType, xpTextEntryField);
             XPSetWidgetProperty(pilot_id_input, xpProperty_MaxCharacters, sizeof(pilot_id) -1);
-            top -= 20;
 
-#if 0
-
-            top -= 20;
-            pref_slider = XPCreateWidget(left, top, left + width - 30, top - 25,
-                                         1, "tlsb_keep", 0, getofp_widget, xpWidgetClass_ScrollBar);
-
-            char buff[10];
-            snprintf(buff, sizeof(buff), "%d", tlsb_keep);
-            pref_slider_v = XPCreateWidget(left + width - 25, top, left + width - 2*5 , top - 25,
-                                           1, buff, 0, getofp_widget, xpWidgetClass_Caption);
-
-            XPSetWidgetProperty(pref_slider, xpProperty_ScrollBarMin, KEEP_MIN);
-            XPSetWidgetProperty(pref_slider, xpProperty_ScrollBarMax, KEEP_MAX);
-            XPSetWidgetProperty(pref_slider, xpProperty_ScrollBarPageAmount, 1);
-            XPSetWidgetProperty(pref_slider, xpProperty_ScrollBarSliderPosition, tlsb_keep);
-#endif
             top -= 30;
             getofp_btn = XPCreateWidget(left, top, left + width - 2*5, top - 20,
                                       1, "OK", 0, getofp_widget, xpWidgetClass_Button);
             XPAddWidgetCallback(getofp_btn, widget_cb);
-        }
 
+            top -= 20;
+            display_widget = XPCreateCustomWidget(left + 10, top, left + 380, top - 200,
+                                                   1, "", 0, getofp_widget, widget_cb);
+       }
+        memset(&ofp_info, 0, sizeof(ofp_info));
         XPSetWidgetDescriptor(pilot_id_input, pilot_id);
         XPShowWidget(getofp_widget);
     }

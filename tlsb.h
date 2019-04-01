@@ -35,6 +35,10 @@ typedef struct _ofp_info
     char destination[10];
     char ci[10];
     char altitude[10];
+    char oew[10];
+    char pax_count[10];
+    char cargo[10];
+    char payload[10];
 } ofp_info_t;
 
 extern int tlsb_ofp_get(const char *userid, char *buffer, int buflen, int *retlen);
