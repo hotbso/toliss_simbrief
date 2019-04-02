@@ -143,15 +143,18 @@ tlsb_ofp_get_parse(const char *pilot_id, ofp_info_t *ofp_info)
 
     if (POSITION("origin")) {
         EXTRACT("icao_code", origin);
+        EXTRACT("plan_rwy", origin_rwy);
     }
 
     if (POSITION("destination")) {
         EXTRACT("icao_code", destination);
-    }
+        EXTRACT("plan_rwy", destination_rwy);
+     }
 
     if (POSITION("general")) {
         EXTRACT("costindex", ci);
         EXTRACT("initial_altitude", altitude);
+        EXTRACT("route", route);
     }
 
     if (POSITION("weights")) {

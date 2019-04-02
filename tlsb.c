@@ -56,6 +56,8 @@ static const char *psep;
 #define MENU_CONFIGURE 1
 #define MENU_GET_OFP 2
 static XPLMMenuID tlsb_menu;
+
+#define MSG_GET_OFP (xpMsg_UserStart + 1)
 static XPWidgetID getofp_widget, display_widget, getofp_btn, pilot_id_input,
                   status_line, xfer_load_btn;
 static ofp_info_t ofp_info;
@@ -147,9 +149,15 @@ widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t p
         XPGetWidgetDescriptor(pilot_id_input, pilot_id, sizeof(pilot_id));
 
         XPSetWidgetDescriptor(status_line, "Fetching...");
+        /* Send message to myself to get a draw cycle (draws button as selected) */
+        XPSendMessageToWidget(display_widget, MSG_GET_OFP, xpMode_Direct, 0, 0);
+        return 1;
+    }
+ 
+    /* self sent message: fetch OFP (lengty) */
+    if ((widget_id == display_widget) && (MSG_GET_OFP == msg)) {
         tlsb_ofp_get_parse(pilot_id, &ofp_info);
         tlsb_dump_ofp_info(&ofp_info);
-        XPSetWidgetDescriptor(status_line, "Fetching...");
 
         if (strcmp(ofp_info.status, "Success")) {
             XPSetWidgetDescriptor(status_line, ofp_info.status);
@@ -159,8 +167,8 @@ widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t p
         } else {
             XPSetWidgetDescriptor(status_line, "");
             ofp_info.valid = 1;
-        }
-
+            snprintf(ofp_info.altitude, sizeof(ofp_info.altitude), "%d", atoi(ofp_info.altitude) / 100);
+         }
     }
 
     if ((widget_id == xfer_load_btn) && (msg == xpMsg_PushButtonPressed)) {
@@ -177,23 +185,35 @@ widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t p
         int left, top;
         XPGetWidgetGeometry(display_widget, &left, &top, NULL, NULL);
 
-#define D(field) \
-do { \
+        int left_col = left + 5;
+        int right_col = left + 120;
+        
+#define DL(TXT) \
     top -= 15; \
-    XPLMDrawString(label_color, left, top, #field, NULL, xplmFont_Proportional); \
-    /* if (ofp_info.field[0]) */ XPLMDrawString(xfer_color, left + 200, top, ofp_info.field, NULL, xplmFont_Basic); \
-} while (0)
+    XPLMDrawString(label_color, left_col, top, TXT, NULL, xplmFont_Proportional)
 
-        D(aircraft_icao);
-        D(origin);
-        D(destination);
-        D(ci);
-        D(max_passengers);
-        D(fuel_plan_ramp);
-        D(oew);
-        D(pax_count);
-        D(cargo);
-        D(payload);
+#define DX(field) \
+    XPLMDrawString(xfer_color, right_col, top, ofp_info.field, NULL, xplmFont_Basic)
+  
+        //DL("Pax:"); DF(right_col, max_passengers);
+        // D(right_col, oew);
+        DL("Pax:"); DX(pax_count);
+        DL("Cargo:"); DX(cargo);
+        DL("Fuel:"); DX(fuel_plan_ramp);
+        // D(right_col, payload);
+
+        log_msg("bottom of load position %d", top - 15);
+
+        top -= 30;
+#define DF(left, field) \
+    XPLMDrawString(bg_color, left, top, ofp_info.field, NULL, xplmFont_Basic)
+
+        // D(aircraft_icao);
+        DL("Departure:"); DF(right_col, origin); DF(right_col + 50, origin_rwy);
+        DL("Destination"); DF(right_col, destination); DF(right_col + 50, destination_rwy);
+        DL("Route:"); DF(right_col, route);
+        DL("CI"); DF(right_col, ci);
+        DL("CRZ FL:"); DF(right_col, altitude);
 		return 1;
 	}
 
@@ -210,10 +230,10 @@ menu_cb(void *menu_ref, void *item_ref)
             int left = 200;
             int top = 800;
             int width = 400;
-            int height = 400;
+            int height = 300;
 
             getofp_widget = XPCreateWidget(left, top, left + width, top - height,
-                                         0, "Toliss Simbrief", 1, NULL, xpWidgetClass_MainWindow);
+                                         0, "Toliss Simbrief Connector", 1, NULL, xpWidgetClass_MainWindow);
             XPSetWidgetProperty(getofp_widget, xpProperty_MainWindowHasCloseBoxes, 1);
             XPAddWidgetCallback(getofp_widget, widget_cb);
             left += 5; top -= 25;
@@ -227,9 +247,9 @@ menu_cb(void *menu_ref, void *item_ref)
             XPSetWidgetProperty(pilot_id_input, xpProperty_MaxCharacters, sizeof(pilot_id) -1);
 
             left1 += 65;
-            int top1 = top - 7;
+            int top1 = top + 8;
             getofp_btn = XPCreateWidget(left1, top1, left1 + 60, top1 - 30,
-                                      1, "Fetch", 0, getofp_widget, xpWidgetClass_Button);
+                                      1, "Fetch OFP", 0, getofp_widget, xpWidgetClass_Button);
             XPAddWidgetCallback(getofp_btn, widget_cb);
 
             top -= 20;
@@ -237,10 +257,12 @@ menu_cb(void *menu_ref, void *item_ref)
                                       1, "", 0, getofp_widget, xpWidgetClass_Caption);
 
             top -= 20;
-            display_widget = XPCreateCustomWidget(left + 10, top, left + 380, top - 200,
+            log_msg("display_widget position %d", top);
+            display_widget = XPCreateCustomWidget(left + 10, top, left + width -20, top - height + 10,
                                                    1, "", 0, getofp_widget, widget_cb);
-            top -= 220;
-            xfer_load_btn = XPCreateWidget(left + width/2 - 70, top, left + width/2 + 70, top - 30,
+            top -= 50;
+            log_msg("Button position %d", top);
+            xfer_load_btn = XPCreateWidget(left + 10, top, left + 160, top - 30,
                                       1, "Xfer Load data to ISCS", 0, getofp_widget, xpWidgetClass_Button);
             XPAddWidgetCallback(xfer_load_btn, widget_cb);
         }
@@ -263,7 +285,7 @@ XPluginStart(char *out_name, char *out_sig, char *out_desc)
 
     strcpy(out_name, "toliss_simbrief " VERSION);
     strcpy(out_sig, "tlsb-hotbso");
-    strcpy(out_desc, "A plugin that connects simbrief to ToLiss' A319");
+    strcpy(out_desc, "A plugin that connects simbrief to the ToLiss A319");
 
     /* load preferences */
     XPLMGetPrefsPath(pref_path);
@@ -271,7 +293,6 @@ XPluginStart(char *out_name, char *out_sig, char *out_desc)
     strcat(pref_path, psep);
     strcat(pref_path, "toliss_simbrief.prf");
     load_pref();
-
     return 1;
 }
 
