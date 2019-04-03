@@ -56,8 +56,12 @@ int tlsb_http_get(const char *url, FILE *f, int *ret_len)
         goto error_out;
     }
 
+    if (! WinHttpSetTimeouts(hSession, 5000, 5000, 5000, 5000)) {
+        log_msg("can't set timeouts");
+        goto error_out;
+    }
+    
     hConnect = WinHttpConnect(hSession, L"www.simbrief.com", INTERNET_DEFAULT_HTTPS_PORT, 0);
-
     if (NULL == hConnect) {
         log_msg("Can't open HTTP session");
         goto error_out;
@@ -75,7 +79,6 @@ int tlsb_http_get(const char *url, FILE *f, int *ret_len)
 
     bResults = WinHttpSendRequest(hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0,
                                   WINHTTP_NO_REQUEST_DATA, 0, 0, 0);
-
     if (! bResults) {
         log_msg("Can't send HTTP request");
         goto error_out;

@@ -102,7 +102,8 @@ tlsb_ofp_get_parse(const char *pilot_id, ofp_info_t *ofp_info)
     char url[80];
     sprintf(url, "/api/xml.fetcher.php?userid=%s", pilot_id);
     // log_msg(url);
-    FILE *f = fopen("tlsb_ofp.xml", "w+");
+    //FILE *f = fopen("tlsb_ofp.xml", "w+");
+    FILE *f = tmpfile();
     if (NULL == f) {
         log_msg("Can't open");
         return 0;
