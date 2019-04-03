@@ -260,7 +260,7 @@ menu_cb(void *menu_ref, void *item_ref)
             log_msg("display_widget position %d", top);
             display_widget = XPCreateCustomWidget(left + 10, top, left + width -20, top - height + 10,
                                                    1, "", 0, getofp_widget, widget_cb);
-            top -= 50;
+            top -= 45;
             log_msg("Button position %d", top);
             xfer_load_btn = XPCreateWidget(left + 10, top, left + 160, top - 30,
                                       1, "Xfer Load data to ISCS", 0, getofp_widget, xpWidgetClass_Button);
