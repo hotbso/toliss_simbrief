@@ -31,7 +31,7 @@ SOFTWARE.
 
 #include "tlsb.h"
 
-int tlsb_ofp_get(const char *userid, FILE *f, int *ret_len)
+int tlsb_http_get(const char *url, FILE *f, int *ret_len)
 {
     DWORD dwSize = 0;
     DWORD dwDownloaded = 0;
@@ -63,12 +63,9 @@ int tlsb_ofp_get(const char *userid, FILE *f, int *ret_len)
         goto error_out;
     }
 
-    sprintf(buffer, "/api/xml.fetcher.php?userid=%s", userid);
-    log_msg(buffer);
-
     wchar_t object[200];
     size_t converted;
-    mbstowcs_s(&converted, object, 200, buffer, _TRUNCATE);
+    mbstowcs_s(&converted, object, sizeof(object), url, _TRUNCATE);
     hRequest = WinHttpOpenRequest(hConnect, L"GET", object, NULL, WINHTTP_NO_REFERER,
                                   WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
     if (NULL == hRequest) {

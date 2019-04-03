@@ -46,7 +46,7 @@ typedef struct _ofp_info
     char route[200];
 } ofp_info_t;
 
-extern int tlsb_ofp_get(const char *userid, FILE *f, int *retlen);
+extern int tlsb_http_get(const char *userid, FILE *f, int *retlen);
 extern void log_msg(const char *fmt, ...);
 extern int tlsb_ofp_get_parse(const char *pilot_id, ofp_info_t *ofp_info);
 extern void tlsb_dump_ofp_info(ofp_info_t *ofp_info);

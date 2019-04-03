@@ -97,14 +97,18 @@ tlsb_ofp_get_parse(const char *pilot_id, ofp_info_t *ofp_info)
     memset(ofp_info, 0, sizeof(*ofp_info));
     int ofp_len;
 
+
+#if 1
+    char url[80];
+    sprintf(url, "/api/xml.fetcher.php?userid=%s", pilot_id);
+    // log_msg(url);
     FILE *f = fopen("tlsb_ofp.xml", "w+");
     if (NULL == f) {
         log_msg("Can't open");
         return 0;
     }
 
-#if 1
-    int res = tlsb_ofp_get(pilot_id, f, &ofp_len);
+    int res = tlsb_http_get(url, f, &ofp_len);
 #else
     FILE *f = fopen("tlsb_ofp.xml", "r");
     int res = (f != NULL);
@@ -115,10 +119,10 @@ tlsb_ofp_get_parse(const char *pilot_id, ofp_info_t *ofp_info)
         fclose(f);
         return 0;
     }
- 
+
     log_msg("got ofp %d bytes", ofp_len);
     rewind(f);
-    
+
     if (NULL == (ofp = malloc(ofp_len+1))) {    /* + space for a terminating 0 */
         log_msg("can't malloc OFP xml buffer");
         fclose(f);
@@ -129,7 +133,7 @@ tlsb_ofp_get_parse(const char *pilot_id, ofp_info_t *ofp_info)
     fclose(f);
     res = 1;
     ofp[ofp_len] = '\0';
-    
+
     int out_s, out_e;
     if (POSITION("fetch")) {
         EXTRACT("status", status);
