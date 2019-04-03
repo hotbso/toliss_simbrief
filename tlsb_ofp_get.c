@@ -31,7 +31,7 @@ SOFTWARE.
 
 #include "tlsb.h"
 
-int tlsb_ofp_get(const char *userid, char *buffer, int buflen, int *retlen)
+int tlsb_ofp_get(const char *userid, FILE *f, int *ret_len)
 {
     DWORD dwSize = 0;
     DWORD dwDownloaded = 0;
@@ -40,6 +40,8 @@ int tlsb_ofp_get(const char *userid, char *buffer, int buflen, int *retlen)
                hConnect = NULL,
                hRequest = NULL;
 
+    char buffer[16 * 1024];
+
     // Use WinHttpOpen to obtain a session handle.
     hSession = WinHttpOpen( L"toliss_sb",
             WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
@@ -47,6 +49,7 @@ int tlsb_ofp_get(const char *userid, char *buffer, int buflen, int *retlen)
             WINHTTP_NO_PROXY_BYPASS, 0 );
 
     int result = 0;
+    *ret_len = 0;
 
     if (NULL == hSession) {
         log_msg("Can't open HTTP session");
@@ -60,7 +63,7 @@ int tlsb_ofp_get(const char *userid, char *buffer, int buflen, int *retlen)
         goto error_out;
     }
 
-    snprintf(buffer, buflen, "/api/xml.fetcher.php?userid=%s", userid);
+    sprintf(buffer, "/api/xml.fetcher.php?userid=%s", userid);
     log_msg(buffer);
 
     wchar_t object[200];
@@ -87,8 +90,6 @@ int tlsb_ofp_get(const char *userid, char *buffer, int buflen, int *retlen)
         goto error_out;
     }
 
-    int bofs = 0;
-
     while (1) {
         DWORD res = WinHttpQueryDataAvailable(hRequest, &dwSize);
         if (!res) {
@@ -96,26 +97,29 @@ int tlsb_ofp_get(const char *userid, char *buffer, int buflen, int *retlen)
             goto error_out;
         }
 
-        //log_msg("dwSize %d", dwSize);
+        // log_msg("dwSize %d", dwSize);
         if (0 == dwSize) {
-            buffer[bofs] = '\0';
-            *retlen = bofs;
             break;
         }
 
-        if (dwSize > buflen - 1) {
-            log_msg("Buffer to small");
-            goto error_out;
-        }
+        while (dwSize > 0) {
+            int get_len = (dwSize < sizeof(buffer) ? dwSize : sizeof(buffer));
+            
+            bResults = WinHttpReadData(hRequest, buffer, get_len, &dwDownloaded);
+            if (! bResults){
+               log_msg("Error %u in WinHttpReadData.", GetLastError());
+               goto error_out;
+            }
 
-        bResults = WinHttpReadData(hRequest, buffer + bofs, dwSize, &dwDownloaded);
-        if (! bResults){
-           log_msg("Error %u in WinHttpReadData.", GetLastError());
-           goto error_out;
-        }
+            fwrite(buffer, 1, dwDownloaded, f);
+            if (ferror(f)) {
+                log_msg("error wrinting file");
+                goto error_out;
+            }
 
-        buflen -= dwDownloaded;
-        bofs += dwDownloaded;
+            dwSize -= dwDownloaded;
+            *ret_len += dwDownloaded;
+        }
     }
 
     result = 1;

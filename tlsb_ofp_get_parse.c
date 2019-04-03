@@ -93,37 +93,43 @@ do { \
 int
 tlsb_ofp_get_parse(const char *pilot_id, ofp_info_t *ofp_info)
 {
+    char *ofp;
     memset(ofp_info, 0, sizeof(*ofp_info));
-
-    /* that should be plenty */
-    int buflen = 1024 * 1014;
-    char *ofp = malloc(buflen);
-    if (NULL == ofp) {
-        log_msg("Can't malloc");
-        return 0;
-    }
-
     int ofp_len;
-#if 1
-    int res = tlsb_ofp_get(pilot_id, ofp, buflen, &ofp_len);
-#else
-    FILE *f = fopen("xml.fetcher.xml", "r");
-    int res = 0;
-    if (f) {
-        ofp_len = fread(ofp, 1, buflen, f);
-        fclose(f);
-        res = 1;
-    } else {
-        perror("fopen ");
-    }
-#endif
-    if (0 == res) {
-        strcpy(ofp_info->status, "Network error");
+
+    FILE *f = fopen("tlsb_ofp.xml", "w+");
+    if (NULL == f) {
+        log_msg("Can't open");
         return 0;
     }
 
-    log_msg("got ofp %d bytes", ofp_len);
+#if 1
+    int res = tlsb_ofp_get(pilot_id, f, &ofp_len);
+#else
+    FILE *f = fopen("tlsb_ofp.xml", "r");
+    int res = (f != NULL);
+#endif
 
+   if (0 == res) {
+        strcpy(ofp_info->status, "Network error");
+        fclose(f);
+        return 0;
+    }
+ 
+    log_msg("got ofp %d bytes", ofp_len);
+    rewind(f);
+    
+    if (NULL == (ofp = malloc(ofp_len+1))) {    /* + space for a terminating 0 */
+        log_msg("can't malloc OFP xml buffer");
+        fclose(f);
+        return 0;
+    }
+
+    ofp_len = fread(ofp, 1, ofp_len, f);
+    fclose(f);
+    res = 1;
+    ofp[ofp_len] = '\0';
+    
     int out_s, out_e;
     if (POSITION("fetch")) {
         EXTRACT("status", status);
