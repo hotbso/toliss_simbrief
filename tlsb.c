@@ -53,14 +53,18 @@ SOFTWARE.
 static char xpdir[512];
 static const char *psep;
 
-#define MENU_CONFIGURE 1
-#define MENU_GET_OFP 2
 static XPLMMenuID tlsb_menu;
 
 #define MSG_GET_OFP (xpMsg_UserStart + 1)
-static XPWidgetID getofp_widget, display_widget, getofp_btn, pilot_id_input,
+static XPWidgetID getofp_widget, display_widget, getofp_btn,
                   status_line, xfer_load_btn;
+static XPWidgetID conf_widget, pilot_id_input, conf_ok_btn,
+                  conf_downl_pdf_btn, conf_downl_fpl_btn;
+
 static ofp_info_t ofp_info;
+static int download_fpl = 1;
+static int download_pdf = 0;
+
 static XPLMDataRef no_pax_dr, pax_distrib_dr, aft_cargo_dr, fwd_cargo_dr, write_fob_dr;
 static XPLMCommandRef set_weight_cmdr;
 
@@ -142,19 +146,29 @@ widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t p
         return 1;
     }
 
+    if ((widget_id == conf_widget) && (msg == xpMessage_CloseButtonPushed)) {
+        XPHideWidget(conf_widget);
+        return 1;
+    }
+
     if (error_disabled)
         return 1;
 
     if ((widget_id == getofp_btn) && (msg == xpMsg_PushButtonPressed)) {
-        XPGetWidgetDescriptor(pilot_id_input, pilot_id, sizeof(pilot_id));
-
         XPSetWidgetDescriptor(status_line, "Fetching...");
         /* Send message to myself to get a draw cycle (draws button as selected) */
         XPSendMessageToWidget(display_widget, MSG_GET_OFP, xpMode_Direct, 0, 0);
         return 1;
     }
 
-    /* self sent message: fetch OFP (lengty) */
+    if ((widget_id == conf_ok_btn) && (msg == xpMsg_PushButtonPressed)) {
+        XPGetWidgetDescriptor(pilot_id_input, pilot_id, sizeof(pilot_id));
+        save_pref();
+        XPHideWidget(conf_widget);
+        return 1;
+    }
+
+    /* self sent message: fetch OFP (lengthy) */
     if ((widget_id == display_widget) && (MSG_GET_OFP == msg)) {
         tlsb_ofp_get_parse(pilot_id, &ofp_info);
         tlsb_dump_ofp_info(&ofp_info);
@@ -219,7 +233,7 @@ widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t p
             int len = strlen(rptr);
             if (len <= ROUTE_BRK)
                 break;
-            
+
             /* find last blank < line length */
             char c = rptr[ROUTE_BRK];
             rptr[ROUTE_BRK] = '\0';
@@ -230,7 +244,7 @@ widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t p
                 log_msg("Can't format route!");
                 break;
             }
-            
+
             /* write that fragment */
             c = *cptr;
             *cptr = '\0';
@@ -238,8 +252,8 @@ widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t p
             top -= 15;
             *cptr = c;
             rptr = cptr + 1;    /* behind the blank */
-        }   
-        
+        }
+
         XPLMDrawString(bg_color, right_col, top, rptr, NULL, xplmFont_Basic);
 
         DL("CI"); DF(right_col, ci);
@@ -254,8 +268,8 @@ widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t p
 static void
 menu_cb(void *menu_ref, void *item_ref)
 {
-    if (item_ref == (void *)MENU_GET_OFP) {
-        /* create gui */
+    /* create gui */
+    if (item_ref == &getofp_widget) {
         if (NULL == getofp_widget) {
             int left = 200;
             int top = 800;
@@ -266,19 +280,10 @@ menu_cb(void *menu_ref, void *item_ref)
                                          0, "Toliss Simbrief Connector", 1, NULL, xpWidgetClass_MainWindow);
             XPSetWidgetProperty(getofp_widget, xpProperty_MainWindowHasCloseBoxes, 1);
             XPAddWidgetCallback(getofp_widget, widget_cb);
-            left += 5; top -= 25;
-            XPCreateWidget(left, top, left + width - 2 * 5, top - 15,
-                           1, "Pilot Id", 0, getofp_widget, xpWidgetClass_Caption);
+            left += 5; top -= 15;
 
-            int left1 = left + 80;
-            pilot_id_input = XPCreateWidget(left1, top, left1 +  50, top - 15,
-                                            1, pilot_id, 0, getofp_widget, xpWidgetClass_TextField);
-            XPSetWidgetProperty(pilot_id_input, xpProperty_TextFieldType, xpTextEntryField);
-            XPSetWidgetProperty(pilot_id_input, xpProperty_MaxCharacters, sizeof(pilot_id) -1);
-
-            left1 += 65;
-            int top1 = top + 8;
-            getofp_btn = XPCreateWidget(left1, top1, left1 + 60, top1 - 30,
+            int left1 = left + 10;
+            getofp_btn = XPCreateWidget(left1, top, left1 + 60, top - 30,
                                       1, "Fetch OFP", 0, getofp_widget, xpWidgetClass_Button);
             XPAddWidgetCallback(getofp_btn, widget_cb);
 
@@ -297,8 +302,53 @@ menu_cb(void *menu_ref, void *item_ref)
             XPAddWidgetCallback(xfer_load_btn, widget_cb);
         }
 
-        XPSetWidgetDescriptor(pilot_id_input, pilot_id);
         XPShowWidget(getofp_widget);
+        return;
+    }
+
+    if (item_ref == &conf_widget) {
+        if (NULL == conf_widget) {
+            int left = 250;
+            int top = 800;
+            int width = 300;
+            int height = 200;
+
+            conf_widget = XPCreateWidget(left, top, left + width, top - height,
+                                         0, "Toliss Simbrief Connector / Configuration", 1, NULL, xpWidgetClass_MainWindow);
+            XPSetWidgetProperty(conf_widget, xpProperty_MainWindowHasCloseBoxes, 1);
+            XPAddWidgetCallback(conf_widget, widget_cb);
+            left += 5; top -= 25;
+            XPCreateWidget(left, top, left + width - 2 * 5, top - 15,
+                           1, "Pilot Id", 0, conf_widget, xpWidgetClass_Caption);
+
+            int left1 = left + 80;
+            pilot_id_input = XPCreateWidget(left1, top, left1 +  50, top - 15,
+                                            1, pilot_id, 0, conf_widget, xpWidgetClass_TextField);
+            XPSetWidgetProperty(pilot_id_input, xpProperty_TextFieldType, xpTextEntryField);
+            XPSetWidgetProperty(pilot_id_input, xpProperty_MaxCharacters, sizeof(pilot_id) -1);
+
+            top -= 20;
+            conf_downl_pdf_btn = XPCreateWidget(left, top, left + 20, top - 20,
+                                      1, "", 0, conf_widget, xpWidgetClass_Button);
+            XPSetWidgetProperty(conf_downl_pdf_btn, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox);
+            
+            top -= 20;
+            conf_downl_fpl_btn = XPCreateWidget(left, top, left + 20, top - 20,
+                                      1, "", 0, conf_widget, xpWidgetClass_Button);
+            XPSetWidgetProperty(conf_downl_fpl_btn, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox);
+            
+            top -= 45;
+            log_msg("Button position %d", top);
+            conf_ok_btn = XPCreateWidget(left + 10, top, left + 160, top - 30,
+                                      1, "OK", 0, conf_widget, xpWidgetClass_Button);
+            XPAddWidgetCallback(conf_ok_btn, widget_cb);
+        }
+
+        XPSetWidgetDescriptor(pilot_id_input, pilot_id);
+        XPSetWidgetProperty(conf_downl_pdf_btn, xpProperty_ButtonState, download_pdf);
+        XPSetWidgetProperty(conf_downl_fpl_btn, xpProperty_ButtonState, download_fpl);
+        XPShowWidget(conf_widget);
+        return;
     }
 }
 
@@ -306,7 +356,6 @@ menu_cb(void *menu_ref, void *item_ref)
 PLUGIN_API int
 XPluginStart(char *out_name, char *out_sig, char *out_desc)
 {
-
     /* Always use Unix-native paths on the Mac! */
     XPLMEnableFeature("XPLM_USE_NATIVE_PATHS", 1);
 
@@ -376,8 +425,8 @@ XPluginReceiveMessage(XPLMPluginID in_from, long in_msg, void *in_param)
                     XPLMMenuID menu = XPLMFindPluginsMenu();
                     int sub_menu = XPLMAppendMenuItem(menu, "Toliss Simbrief", NULL, 1);
                     tlsb_menu = XPLMCreateMenu("Toliss Simbrief", menu, sub_menu, menu_cb, NULL);
-                    XPLMAppendMenuItem(tlsb_menu, "Configure", (void *)MENU_CONFIGURE, 0);
-                    XPLMAppendMenuItem(tlsb_menu, "Get OFP", (void *)MENU_GET_OFP, 0);
+                    XPLMAppendMenuItem(tlsb_menu, "Configure", &conf_widget, 0);
+                    XPLMAppendMenuItem(tlsb_menu, "Get OFP", &getofp_widget, 0);
                }
             }
         break;
