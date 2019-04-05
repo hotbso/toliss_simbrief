@@ -61,8 +61,8 @@ static XPLMMenuID tlsb_menu;
 static XPWidgetID getofp_widget, display_widget, getofp_btn, pilot_id_input,
                   status_line, xfer_load_btn;
 static ofp_info_t ofp_info;
-static XPLMDataRef no_pax_dr, pax_distrib_dr, aft_cargo_dr, fwd_cargo_dr, write_fob_dr,
-                   set_weight_dr;
+static XPLMDataRef no_pax_dr, pax_distrib_dr, aft_cargo_dr, fwd_cargo_dr, write_fob_dr;
+static XPLMCommandRef set_weight_cmdr;
 
 static int dr_mapped;
 static int error_disabled;
@@ -84,7 +84,7 @@ map_datarefs()
     if (NULL == (aft_cargo_dr = XPLMFindDataRef("AirbusFBW/AftCargo")))goto err;
     if (NULL == (fwd_cargo_dr = XPLMFindDataRef("AirbusFBW/FwdCargo"))) goto err;
     if (NULL == (write_fob_dr = XPLMFindDataRef("AirbusFBW/WriteFOB"))) goto err;
-//    if (NULL == (set_weight_dr = XPLMFindDataRef("AirbusFBW/SetWeightAndCG"))) goto err;
+    if (NULL == (set_weight_cmdr = XPLMFindCommand("AirbusFBW/SetWeightAndCG"))) goto err;
     return;
 
 err:
@@ -106,7 +106,7 @@ xfer_load_data()
     float cargo = 0.5 * atof(ofp_info.cargo);
     XPLMSetDataf(fwd_cargo_dr, cargo);
     XPLMSetDataf(aft_cargo_dr, cargo);
-    //XPLMSetDatai(set_weight_dr, 1);
+    XPLMCommandOnce(set_weight_cmdr);
 }
 
 static void
@@ -153,7 +153,7 @@ widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t p
         XPSendMessageToWidget(display_widget, MSG_GET_OFP, xpMode_Direct, 0, 0);
         return 1;
     }
- 
+
     /* self sent message: fetch OFP (lengty) */
     if ((widget_id == display_widget) && (MSG_GET_OFP == msg)) {
         tlsb_ofp_get_parse(pilot_id, &ofp_info);
@@ -187,14 +187,14 @@ widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t p
 
         int left_col = left + 5;
         int right_col = left + 120;
-        
+
 #define DL(TXT) \
     top -= 15; \
     XPLMDrawString(label_color, left_col, top, TXT, NULL, xplmFont_Proportional)
 
 #define DX(field) \
     XPLMDrawString(xfer_color, right_col, top, ofp_info.field, NULL, xplmFont_Basic)
-  
+
         //DL("Pax:"); DF(right_col, max_passengers);
         // D(right_col, oew);
         DL("Pax:"); DX(pax_count);
