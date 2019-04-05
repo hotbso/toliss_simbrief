@@ -43,7 +43,7 @@ typedef struct _ofp_info
     char pax_count[10];
     char cargo[10];
     char payload[10];
-    char route[200];
+    char route[1000];
 } ofp_info_t;
 
 extern int tlsb_http_get(const char *userid, FILE *f, int *retlen);

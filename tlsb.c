@@ -211,7 +211,37 @@ widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t p
         // D(aircraft_icao);
         DL("Departure:"); DF(right_col, origin); DF(right_col + 50, origin_rwy);
         DL("Destination"); DF(right_col, destination); DF(right_col + 50, destination_rwy);
-        DL("Route:"); DF(right_col, route);
+        DL("Route:");
+
+#define ROUTE_BRK 40
+        char *rptr = ofp_info.route;
+        while (1) {
+            int len = strlen(rptr);
+            if (len <= ROUTE_BRK)
+                break;
+            
+            /* find last blank < line length */
+            char c = rptr[ROUTE_BRK];
+            rptr[ROUTE_BRK] = '\0';
+            char *cptr = strrchr(rptr, ' ');
+            rptr[ROUTE_BRK] = c;
+
+            if (NULL == cptr) {
+                log_msg("Can't format route!");
+                break;
+            }
+            
+            /* write that fragment */
+            c = *cptr;
+            *cptr = '\0';
+            XPLMDrawString(bg_color, right_col, top, rptr, NULL, xplmFont_Basic);
+            top -= 15;
+            *cptr = c;
+            rptr = cptr + 1;    /* behind the blank */
+        }   
+        
+        XPLMDrawString(bg_color, right_col, top, rptr, NULL, xplmFont_Basic);
+
         DL("CI"); DF(right_col, ci);
         DL("CRZ FL:"); DF(right_col, altitude);
 		return 1;
