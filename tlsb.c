@@ -59,7 +59,7 @@ static XPLMMenuID tlsb_menu;
 static XPWidgetID getofp_widget, display_widget, getofp_btn,
                   status_line, xfer_load_btn;
 static XPWidgetID conf_widget, pilot_id_input, conf_ok_btn,
-                  conf_downl_pdf_btn, conf_downl_fpl_btn;
+                  conf_downl_pdf_btn, conf_downl_pdf_path, conf_downl_pdf_paste_btn, conf_downl_fpl_btn;
 
 static ofp_info_t ofp_info;
 static int download_fpl = 1;
@@ -74,6 +74,7 @@ static int error_disabled;
 static char pref_path[512];
 static int tla3xx_detected;
 static char pilot_id[20];
+static char pdf_download_dir[200];
 
 static void
 map_datarefs()
@@ -168,6 +169,13 @@ widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t p
         return 1;
     }
 
+   if ((widget_id == conf_downl_pdf_paste_btn) && (msg == xpMsg_PushButtonPressed)) {
+        if (get_clipboard(pdf_download_dir, sizeof(pdf_download_dir))) {
+            XPSetWidgetDescriptor(conf_downl_pdf_path, pdf_download_dir);
+        }
+        return 1;
+    }
+
     /* self sent message: fetch OFP (lengthy) */
     if ((widget_id == display_widget) && (MSG_GET_OFP == msg)) {
         tlsb_ofp_get_parse(pilot_id, &ofp_info);
@@ -200,7 +208,8 @@ widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t p
         XPGetWidgetGeometry(display_widget, &left, &top, NULL, NULL);
 
         int left_col = left + 5;
-        int right_col = left + 120;
+        int right_col = left + 80;
+        top -= 5;
 
 #define DL(TXT) \
     top -= 15; \
@@ -227,7 +236,8 @@ widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t p
         DL("Destination"); DF(right_col, destination); DF(right_col + 50, destination_rwy);
         DL("Route:");
 
-#define ROUTE_BRK 40
+        /* break route to this # of chars */
+#define ROUTE_BRK 45
         char *rptr = ofp_info.route;
         while (1) {
             int len = strlen(rptr);
@@ -280,7 +290,7 @@ menu_cb(void *menu_ref, void *item_ref)
                                          0, "Toliss Simbrief Connector", 1, NULL, xpWidgetClass_MainWindow);
             XPSetWidgetProperty(getofp_widget, xpProperty_MainWindowHasCloseBoxes, 1);
             XPAddWidgetCallback(getofp_widget, widget_cb);
-            left += 5; top -= 15;
+            left += 5; top -= 25;
 
             int left1 = left + 10;
             getofp_btn = XPCreateWidget(left1, top, left1 + 60, top - 30,
@@ -295,7 +305,7 @@ menu_cb(void *menu_ref, void *item_ref)
             log_msg("display_widget position %d", top);
             display_widget = XPCreateCustomWidget(left + 10, top, left + width -20, top - height + 10,
                                                    1, "", 0, getofp_widget, widget_cb);
-            top -= 45;
+            top -= 50;
             log_msg("Button position %d", top);
             xfer_load_btn = XPCreateWidget(left + 10, top, left + 160, top - 30,
                                       1, "Xfer Load data to ISCS", 0, getofp_widget, xpWidgetClass_Button);
@@ -310,8 +320,8 @@ menu_cb(void *menu_ref, void *item_ref)
         if (NULL == conf_widget) {
             int left = 250;
             int top = 800;
-            int width = 300;
-            int height = 200;
+            int width = 500;
+            int height = 180;
 
             conf_widget = XPCreateWidget(left, top, left + width, top - height,
                                          0, "Toliss Simbrief Connector / Configuration", 1, NULL, xpWidgetClass_MainWindow);
@@ -328,16 +338,34 @@ menu_cb(void *menu_ref, void *item_ref)
             XPSetWidgetProperty(pilot_id_input, xpProperty_MaxCharacters, sizeof(pilot_id) -1);
 
             top -= 20;
+            XPCreateWidget(left, top, left + width - 10, top - 20,
+                                      1, "Download OFP pdf file to directory", 0, conf_widget, xpWidgetClass_Caption);
+            top -= 20;
             conf_downl_pdf_btn = XPCreateWidget(left, top, left + 20, top - 20,
                                       1, "", 0, conf_widget, xpWidgetClass_Button);
+            XPSetWidgetProperty(conf_downl_pdf_btn, xpProperty_ButtonType, xpRadioButton);
             XPSetWidgetProperty(conf_downl_pdf_btn, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox);
-            
+
+            int left2 = left + width - 70;
+            conf_downl_pdf_path = XPCreateWidget(left1, top, left2, top - 15,
+                                            1, "", 0, conf_widget, xpWidgetClass_TextField);
+            XPSetWidgetProperty(conf_downl_pdf_path, xpProperty_TextFieldType, xpTextEntryField);
+            XPSetWidgetProperty(conf_downl_pdf_path, xpProperty_MaxCharacters, sizeof(pdf_download_dir) -1);
+
+            conf_downl_pdf_paste_btn = XPCreateWidget(left2 + 20 , top - 10, left2 + 60, top - 20,
+                                      1, "Paste", 0, conf_widget, xpWidgetClass_Button);
+            XPAddWidgetCallback(conf_downl_pdf_paste_btn, widget_cb);
+
+            top -= 20;
+            XPCreateWidget(left, top, left + width - 10, top - 20,
+                                      1, "Download Flightplan", 0, conf_widget, xpWidgetClass_Caption);
             top -= 20;
             conf_downl_fpl_btn = XPCreateWidget(left, top, left + 20, top - 20,
                                       1, "", 0, conf_widget, xpWidgetClass_Button);
+            XPSetWidgetProperty(conf_downl_fpl_btn, xpProperty_ButtonType, xpRadioButton);
             XPSetWidgetProperty(conf_downl_fpl_btn, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox);
-            
-            top -= 45;
+
+            top -= 30;
             log_msg("Button position %d", top);
             conf_ok_btn = XPCreateWidget(left + 10, top, left + 160, top - 30,
                                       1, "OK", 0, conf_widget, xpWidgetClass_Button);
@@ -345,6 +373,7 @@ menu_cb(void *menu_ref, void *item_ref)
         }
 
         XPSetWidgetDescriptor(pilot_id_input, pilot_id);
+        XPSetWidgetDescriptor(conf_downl_pdf_path, pdf_download_dir);
         XPSetWidgetProperty(conf_downl_pdf_btn, xpProperty_ButtonState, download_pdf);
         XPSetWidgetProperty(conf_downl_fpl_btn, xpProperty_ButtonState, download_fpl);
         XPShowWidget(conf_widget);

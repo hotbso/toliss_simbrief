@@ -3,7 +3,7 @@
 TARGET=win.xpl sbfetch_test.exe
 
 HEADERS=$(wildcard *.h)
-OBJECTS=tlsb.o log_msg.o tlsb_http_get.o tlsb_ofp_get_parse.o
+OBJECTS=tlsb.o log_msg.o tlsb_http_get.o tlsb_ofp_get_parse.o win_clipboard.o
 SDK=../SDK
 PLUGDIR=/e/X-Plane-11/Resources/plugins/toliss_simbrief
 

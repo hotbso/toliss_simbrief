@@ -22,32 +22,32 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include <stdio.h>
-#include <stdarg.h>
+#include <stdlib.h>
+#include <string.h>
+#include <Windows.h>
 
-typedef struct _ofp_info
+#include "tlsb.h"
+
+int
+get_clipboard(char *buffer, int buflen)
 {
-    int valid;
-    char status[100];
-    char errmsg[100];
-    char aircraft_icao[10];
-    char max_passengers[10];
-    char fuel_plan_ramp[10];
-    char origin[10];
-    char origin_rwy[6];
-    char destination[10];
-    char destination_rwy[10];
-    char ci[10];
-    char altitude[10];
-    char oew[10];
-    char pax_count[10];
-    char cargo[10];
-    char payload[10];
-    char route[1000];
-} ofp_info_t;
+    int ret = 0;
+    
+	if (TRUE == OpenClipboard(NULL)) {
+		HANDLE hData = GetClipboardData(CF_TEXT);
+		if (NULL != hData) {
+            char *pszText = GlobalLock(hData);
+			if (NULL != pszText) {
+                strncpy(buffer, GlobalLock(hData), buflen);
+                buffer[buflen - 1] = '\0';
+                ret = 1;
+			}
 
-extern int tlsb_http_get(const char *userid, FILE *f, int *retlen);
-extern void log_msg(const char *fmt, ...);
-extern int tlsb_ofp_get_parse(const char *pilot_id, ofp_info_t *ofp_info);
-extern void tlsb_dump_ofp_info(ofp_info_t *ofp_info);
-extern int get_clipboard(char *buffer, int buflen);
+			GlobalUnlock(hData);
+		}
+
+		CloseClipboard();
+	}
+
+	return ret;
+}
