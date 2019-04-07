@@ -62,8 +62,6 @@ static XPWidgetID conf_widget, pilot_id_input, conf_ok_btn,
                   conf_downl_pdf_btn, conf_downl_pdf_path, conf_downl_pdf_paste_btn, conf_downl_fpl_btn;
 
 static ofp_info_t ofp_info;
-static int download_fpl = 1;
-static int download_pdf = 0;
 
 static XPLMDataRef no_pax_dr, pax_distrib_dr, aft_cargo_dr, fwd_cargo_dr, write_fob_dr;
 static XPLMCommandRef set_weight_cmdr;
@@ -74,6 +72,7 @@ static int error_disabled;
 static char pref_path[512];
 static int tla3xx_detected;
 static char pilot_id[20];
+static int download_fpl, download_pdf;
 static char pdf_download_dir[200];
 
 static void
@@ -121,7 +120,9 @@ save_pref()
     if (NULL == f)
         return;
 
-    fprintf(f, "%s", pilot_id);
+    fputs(pilot_id, f); putc('\n', f);
+    putc((download_pdf ? '1' : '0'), f); fputs(pdf_download_dir, f); putc('\n', f);
+    putc((download_fpl ? '1' : '0'), f); putc('\n', f);
     fclose(f);
 }
 
@@ -129,13 +130,27 @@ save_pref()
 static void
 load_pref()
 {
+    char c;
     FILE *f  = fopen(pref_path, "r");
     if (NULL == f)
         return;
 
-    fgets(pilot_id, sizeof(pilot_id) -1, f);
+    fgets(pilot_id, sizeof(pilot_id), f);
+    int len = strlen(pilot_id);
+    if ('\n' == pilot_id[len - 1]) pilot_id[len - 1] = '\0';
+
+    if (EOF == (c = fgetc(f))) goto out;
+    download_pdf = (c == '1' ? 1 : 0);
+
+    if (NULL == fgets(pdf_download_dir, sizeof(pdf_download_dir), f)) goto out;
+    len = strlen(pdf_download_dir);
+    if ('\n' == pdf_download_dir[len - 1]) pdf_download_dir[len - 1] = '\0';
+   
+    if (EOF == (c = fgetc(f))) goto out;
+    download_fpl = (c == '1' ? 1 : 0);
+
+  out:
     fclose(f);
-    log_msg("From pref: pilot_id: %s", pilot_id);
 }
 
 
@@ -164,6 +179,8 @@ widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t p
 
     if ((widget_id == conf_ok_btn) && (msg == xpMsg_PushButtonPressed)) {
         XPGetWidgetDescriptor(pilot_id_input, pilot_id, sizeof(pilot_id));
+        download_pdf = XPGetWidgetProperty(conf_downl_pdf_btn, xpProperty_ButtonState, NULL);
+        download_fpl = XPGetWidgetProperty(conf_downl_fpl_btn, xpProperty_ButtonState, NULL);
         save_pref();
         XPHideWidget(conf_widget);
         return 1;
@@ -331,7 +348,7 @@ menu_cb(void *menu_ref, void *item_ref)
             XPCreateWidget(left, top, left + width - 2 * 5, top - 15,
                            1, "Pilot Id", 0, conf_widget, xpWidgetClass_Caption);
 
-            int left1 = left + 80;
+            int left1 = left + 60;
             pilot_id_input = XPCreateWidget(left1, top, left1 +  50, top - 15,
                                             1, pilot_id, 0, conf_widget, xpWidgetClass_TextField);
             XPSetWidgetProperty(pilot_id_input, xpProperty_TextFieldType, xpTextEntryField);
@@ -352,7 +369,7 @@ menu_cb(void *menu_ref, void *item_ref)
             XPSetWidgetProperty(conf_downl_pdf_path, xpProperty_TextFieldType, xpTextEntryField);
             XPSetWidgetProperty(conf_downl_pdf_path, xpProperty_MaxCharacters, sizeof(pdf_download_dir) -1);
 
-            conf_downl_pdf_paste_btn = XPCreateWidget(left2 + 20 , top - 10, left2 + 60, top - 20,
+            conf_downl_pdf_paste_btn = XPCreateWidget(left2 + 20 , top, left2 + 60, top - 20,
                                       1, "Paste", 0, conf_widget, xpWidgetClass_Button);
             XPAddWidgetCallback(conf_downl_pdf_paste_btn, widget_cb);
 
@@ -367,7 +384,7 @@ menu_cb(void *menu_ref, void *item_ref)
 
             top -= 30;
             log_msg("Button position %d", top);
-            conf_ok_btn = XPCreateWidget(left + 10, top, left + 160, top - 30,
+            conf_ok_btn = XPCreateWidget(left + 10, top, left + 140, top - 30,
                                       1, "OK", 0, conf_widget, xpWidgetClass_Button);
             XPAddWidgetCallback(conf_ok_btn, widget_cb);
         }
