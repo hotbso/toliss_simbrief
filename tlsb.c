@@ -73,7 +73,7 @@ static int error_disabled;
 static char pref_path[512];
 static int tla3xx_detected;
 static char pilot_id[20];
-static int download_fpl, download_pdf;
+static int download_fpl, flag_download_pdf;
 static char pdf_download_dir[200];
 
 static void
@@ -122,7 +122,7 @@ save_pref()
         return;
 
     fputs(pilot_id, f); putc('\n', f);
-    putc((download_pdf ? '1' : '0'), f); fputs(pdf_download_dir, f); putc('\n', f);
+    putc((flag_download_pdf ? '1' : '0'), f); fputs(pdf_download_dir, f); putc('\n', f);
     putc((download_fpl ? '1' : '0'), f); putc('\n', f);
     fclose(f);
 }
@@ -141,12 +141,12 @@ load_pref()
     if ('\n' == pilot_id[len - 1]) pilot_id[len - 1] = '\0';
 
     if (EOF == (c = fgetc(f))) goto out;
-    download_pdf = (c == '1' ? 1 : 0);
+    flag_download_pdf = (c == '1' ? 1 : 0);
 
     if (NULL == fgets(pdf_download_dir, sizeof(pdf_download_dir), f)) goto out;
     len = strlen(pdf_download_dir);
     if ('\n' == pdf_download_dir[len - 1]) pdf_download_dir[len - 1] = '\0';
-   
+
     if (EOF == (c = fgetc(f))) goto out;
     download_fpl = (c == '1' ? 1 : 0);
 
@@ -154,6 +154,79 @@ load_pref()
     fclose(f);
 }
 
+#if 1
+/* a cude hack to get of crlf in zhe downloaded pdf doc */
+static void
+download_pdf()
+{
+    char URL[300], fn[500];
+    FILE *f = NULL;
+
+    snprintf(URL, sizeof(URL), "%s/%s", ofp_info.sb_path, ofp_info.sb_pdf_link);
+    log_msg("URL '%s'", URL);
+    snprintf(fn, sizeof(fn), "%s%ssb_ofp.pdf", pdf_download_dir, psep);
+
+    if (NULL == (f = fopen(fn, "wb"))) {
+        log_msg("Can't create file '%s'", fn);
+        goto err_out;
+    }
+
+    if (0 == tlsb_http_get(URL, f, NULL)) {
+        log_msg("Can't download '%s'", URL);
+        goto err_out;
+    }
+
+  err_out:
+    if (f) fclose(f);
+}
+#else
+static void
+download_pdf()
+{
+    char URL[300], fn[500];
+    FILE *tf = NULL;
+    FILE *f = NULL;
+
+    snprintf(URL, sizeof(URL), "%s/%s", ofp_info.sb_path, ofp_info.sb_pdf_link);
+    log_msg("URL '%s'", URL);
+    snprintf(fn, sizeof(fn), "%s%ssb_ofp.pdf", pdf_download_dir, psep);
+
+    if (NULL == (tf = tmpfile())) {
+        log_msg("Can't create temporary file");
+        goto err_out;
+    }
+
+    if (0 == tlsb_http_get(URL, tf, NULL)) {
+        log_msg("Can't download '%s'", URL);
+        goto err_out;
+    }
+
+    rewind(tf);
+
+    if (NULL == (f = fopen(fn, "wb"))) {
+        log_msg("Can't create file '%s'", fn);
+        goto err_out;
+    }
+
+    char line[2000];
+    while (fgets(line, sizeof(line), tf)) {
+        int len = strlen(line);
+        log_msg("len in %d", len);
+        if (len > 1) {
+            if (line[len - 1] == '\n' && line[len - 2] == '\r') {
+                len--;
+                line[len - 1] = '\n';
+            }
+        }
+        log_msg("len out %d", len);
+        fwrite(line, 1, len, f);
+    }
+
+  err_out:
+    if (tf) fclose(tf);
+    if (f) fclose(f);
+}
+#endif
 
 static int
 widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t param2)
@@ -175,7 +248,7 @@ widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t p
 
     if ((widget_id == conf_ok_btn) && (msg == xpMsg_PushButtonPressed)) {
         XPGetWidgetDescriptor(pilot_id_input, pilot_id, sizeof(pilot_id));
-        download_pdf = XPGetWidgetProperty(conf_downl_pdf_btn, xpProperty_ButtonState, NULL);
+        flag_download_pdf = XPGetWidgetProperty(conf_downl_pdf_btn, xpProperty_ButtonState, NULL);
         download_fpl = XPGetWidgetProperty(conf_downl_fpl_btn, xpProperty_ButtonState, NULL);
         save_pref();
         XPHideWidget(conf_widget);
@@ -205,22 +278,11 @@ widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t p
             snprintf(ofp_info.altitude, sizeof(ofp_info.altitude), "%d", atoi(ofp_info.altitude) / 100);
         }
 
-        if (ofp_info.valid && download_fpl) {
-            char URL[300], fn[500];
-            snprintf(URL, sizeof(URL), "%s/%s", ofp_info.sb_path, ofp_info.sb_pdf_link);
-            log_msg("URL '%s'", URL);
-            snprintf(fn, sizeof(fn), "%s%ssb_ofp.pdf", pdf_download_dir, psep);
-            FILE *f = fopen(fn, "w");
-            if (NULL == f) {
-                log_msg("Can't create file '%s'", fn);
-            } else {
-                if (0 == tlsb_http_get(URL, f, NULL)) {
-                    log_msg("Can't download '%s'", URL);
-                }
-
-                fclose(f);
-            }
+        if (ofp_info.valid && flag_download_pdf) {
+            download_pdf();
         }
+
+        return 1;
     }
 
     if ((widget_id == xfer_load_btn) && (msg == xpMsg_PushButtonPressed)) {
@@ -404,7 +466,7 @@ menu_cb(void *menu_ref, void *item_ref)
 
         XPSetWidgetDescriptor(pilot_id_input, pilot_id);
         XPSetWidgetDescriptor(conf_downl_pdf_path, pdf_download_dir);
-        XPSetWidgetProperty(conf_downl_pdf_btn, xpProperty_ButtonState, download_pdf);
+        XPSetWidgetProperty(conf_downl_pdf_btn, xpProperty_ButtonState, flag_download_pdf);
         XPSetWidgetProperty(conf_downl_fpl_btn, xpProperty_ButtonState, download_fpl);
         XPShowWidget(conf_widget);
         return;

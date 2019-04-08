@@ -105,7 +105,7 @@ tlsb_ofp_get_parse(const char *pilot_id, ofp_info_t *ofp_info)
     //FILE *f = fopen("tlsb_ofp.xml", "w+");
     FILE *f = tmpfile();
     if (NULL == f) {
-        log_msg("Can't open");
+        log_msg("Can't reate temporary file");
         return 0;
     }
 
