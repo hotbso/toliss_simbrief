@@ -154,8 +154,6 @@ load_pref()
     fclose(f);
 }
 
-#if 1
-/* a cude hack to get of crlf in zhe downloaded pdf doc */
 static void
 download_pdf()
 {
@@ -179,54 +177,7 @@ download_pdf()
   err_out:
     if (f) fclose(f);
 }
-#else
-static void
-download_pdf()
-{
-    char URL[300], fn[500];
-    FILE *tf = NULL;
-    FILE *f = NULL;
 
-    snprintf(URL, sizeof(URL), "%s/%s", ofp_info.sb_path, ofp_info.sb_pdf_link);
-    log_msg("URL '%s'", URL);
-    snprintf(fn, sizeof(fn), "%s%ssb_ofp.pdf", pdf_download_dir, psep);
-
-    if (NULL == (tf = tmpfile())) {
-        log_msg("Can't create temporary file");
-        goto err_out;
-    }
-
-    if (0 == tlsb_http_get(URL, tf, NULL)) {
-        log_msg("Can't download '%s'", URL);
-        goto err_out;
-    }
-
-    rewind(tf);
-
-    if (NULL == (f = fopen(fn, "wb"))) {
-        log_msg("Can't create file '%s'", fn);
-        goto err_out;
-    }
-
-    char line[2000];
-    while (fgets(line, sizeof(line), tf)) {
-        int len = strlen(line);
-        log_msg("len in %d", len);
-        if (len > 1) {
-            if (line[len - 1] == '\n' && line[len - 2] == '\r') {
-                len--;
-                line[len - 1] = '\n';
-            }
-        }
-        log_msg("len out %d", len);
-        fwrite(line, 1, len, f);
-    }
-
-  err_out:
-    if (tf) fclose(tf);
-    if (f) fclose(f);
-}
-#endif
 
 static int
 widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t param2)
