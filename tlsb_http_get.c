@@ -49,7 +49,8 @@ int tlsb_http_get(const char *url, FILE *f, int *ret_len)
             WINHTTP_NO_PROXY_BYPASS, 0 );
 
     int result = 0;
-    *ret_len = 0;
+    if (ret_len)
+        *ret_len = 0;
 
     if (NULL == hSession) {
         log_msg("Can't open HTTP session");
@@ -118,7 +119,8 @@ int tlsb_http_get(const char *url, FILE *f, int *ret_len)
             }
 
             dwSize -= dwDownloaded;
-            *ret_len += dwDownloaded;
+            if (ret_len)
+                *ret_len += dwDownloaded;
         }
     }
 

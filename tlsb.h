@@ -44,6 +44,9 @@ typedef struct _ofp_info
     char cargo[10];
     char payload[10];
     char route[1000];
+    char sb_path[200];
+    char sb_pdf_link[80];
+    char sb_fms_link[80];
 } ofp_info_t;
 
 extern int tlsb_http_get(const char *userid, FILE *f, int *retlen);

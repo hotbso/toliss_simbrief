@@ -175,6 +175,23 @@ tlsb_ofp_get_parse(const char *pilot_id, ofp_info_t *ofp_info)
         EXTRACT("payload", payload);
     }
 
+    if (POSITION("fms_downloads")) {
+        EXTRACT("directory", sb_path);
+        char *cptr = strstr(ofp_info->sb_path, "simbrief.com");
+        if (cptr && (cptr = strchr(cptr, '/')))
+            strcpy(ofp_info->sb_path, cptr);
+    }
+
+    /* beware: these go directly into nested structures that fortunately
+       appear only once */
+    if (POSITION("pdf")) {
+        EXTRACT("link", sb_pdf_link);
+    }
+
+    if (POSITION("xpe")) {
+        EXTRACT("link", sb_fms_link);
+    }
+
 out:
     free(ofp);
     return 1;

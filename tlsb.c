@@ -52,6 +52,7 @@ SOFTWARE.
 
 static char xpdir[512];
 static const char *psep;
+static char fms_path[512];
 
 static XPLMMenuID tlsb_menu;
 
@@ -157,13 +158,8 @@ load_pref()
 static int
 widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t param2)
 {
-    if ((widget_id == getofp_widget) && (msg == xpMessage_CloseButtonPushed)) {
-        XPHideWidget(getofp_widget);
-        return 1;
-    }
-
-    if ((widget_id == conf_widget) && (msg == xpMessage_CloseButtonPushed)) {
-        XPHideWidget(conf_widget);
+    if (msg == xpMessage_CloseButtonPushed) {
+        XPHideWidget(widget_id);
         return 1;
     }
 
@@ -173,7 +169,7 @@ widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t p
     if ((widget_id == getofp_btn) && (msg == xpMsg_PushButtonPressed)) {
         XPSetWidgetDescriptor(status_line, "Fetching...");
         /* Send message to myself to get a draw cycle (draws button as selected) */
-        XPSendMessageToWidget(display_widget, MSG_GET_OFP, xpMode_Direct, 0, 0);
+        XPSendMessageToWidget(getofp_widget, MSG_GET_OFP, xpMode_Direct, 0, 0);
         return 1;
     }
 
@@ -194,7 +190,7 @@ widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t p
     }
 
     /* self sent message: fetch OFP (lengthy) */
-    if ((widget_id == display_widget) && (MSG_GET_OFP == msg)) {
+    if ((widget_id == getofp_widget) && (MSG_GET_OFP == msg)) {
         tlsb_ofp_get_parse(pilot_id, &ofp_info);
         tlsb_dump_ofp_info(&ofp_info);
 
@@ -207,7 +203,24 @@ widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t p
             XPSetWidgetDescriptor(status_line, "");
             ofp_info.valid = 1;
             snprintf(ofp_info.altitude, sizeof(ofp_info.altitude), "%d", atoi(ofp_info.altitude) / 100);
-         }
+        }
+
+        if (ofp_info.valid && download_fpl) {
+            char URL[300], fn[500];
+            snprintf(URL, sizeof(URL), "%s/%s", ofp_info.sb_path, ofp_info.sb_pdf_link);
+            log_msg("URL '%s'", URL);
+            snprintf(fn, sizeof(fn), "%s%ssb_ofp.pdf", pdf_download_dir, psep);
+            FILE *f = fopen(fn, "w");
+            if (NULL == f) {
+                log_msg("Can't create file '%s'", fn);
+            } else {
+                if (0 == tlsb_http_get(URL, f, NULL)) {
+                    log_msg("Can't download '%s'", URL);
+                }
+
+                fclose(f);
+            }
+        }
     }
 
     if ((widget_id == xfer_load_btn) && (msg == xpMsg_PushButtonPressed)) {
@@ -242,7 +255,7 @@ widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t p
         DL("Fuel:"); DX(fuel_plan_ramp);
         // D(right_col, payload);
 
-        log_msg("bottom of load position %d", top - 15);
+        //log_msg("bottom of load position %d", top - 15);
 
         top -= 30;
 #define DF(left, field) \
@@ -405,12 +418,14 @@ XPluginStart(char *out_name, char *out_sig, char *out_desc)
     /* Always use Unix-native paths on the Mac! */
     XPLMEnableFeature("XPLM_USE_NATIVE_PATHS", 1);
 
-    psep = XPLMGetDirectorySeparator();
-    XPLMGetSystemPath(xpdir);
-
     strcpy(out_name, "toliss_simbrief " VERSION);
     strcpy(out_sig, "tlsb-hotbso");
     strcpy(out_desc, "A plugin that connects simbrief to the ToLiss A319");
+
+    psep = XPLMGetDirectorySeparator();
+    XPLMGetSystemPath(xpdir);
+    snprintf(fms_path, sizeof(fms_path), "%s%sOutput%sFMS plans%s",
+             xpdir, psep, psep, psep);
 
     /* load preferences */
     XPLMGetPrefsPath(pref_path);
