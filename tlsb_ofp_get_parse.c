@@ -46,6 +46,9 @@ tlsb_dump_ofp_info(ofp_info_t *ofp_info)
         L(pax_count);
         L(cargo);
         L(payload);
+        L(sb_path);
+        L(sb_pdf_link);
+        L(sb_fms_link);
     } else {
         log_msg(ofp_info->errmsg);
     }
@@ -99,8 +102,8 @@ tlsb_ofp_get_parse(const char *pilot_id, ofp_info_t *ofp_info)
 
 
 #if 1
-    char url[80];
-    sprintf(url, "/api/xml.fetcher.php?userid=%s", pilot_id);
+    char url[100];
+    sprintf(url, "https://www.simbrief.com/api/xml.fetcher.php?userid=%s", pilot_id);
     // log_msg(url);
     //FILE *f = fopen("tlsb_ofp.xml", "w+");
     FILE *f = tmpfile();
@@ -177,9 +180,6 @@ tlsb_ofp_get_parse(const char *pilot_id, ofp_info_t *ofp_info)
 
     if (POSITION("fms_downloads")) {
         EXTRACT("directory", sb_path);
-        char *cptr = strstr(ofp_info->sb_path, "simbrief.com");
-        if (cptr && (cptr = strchr(cptr, '/')))
-            strcpy(ofp_info->sb_path, cptr);
     }
 
     /* beware: these go directly into nested structures that fortunately

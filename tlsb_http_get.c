@@ -40,6 +40,33 @@ int tlsb_http_get(const char *url, FILE *f, int *ret_len)
                hConnect = NULL,
                hRequest = NULL;
 
+    int result = 0;
+    if (ret_len)
+        *ret_len = 0;
+
+    int url_len = strlen(url);
+    WCHAR *url_wc = alloca((url_len + 1) * sizeof(WCHAR));
+    WCHAR *host_wc = alloca((url_len + 1) * sizeof(WCHAR));
+    WCHAR *path_wc = alloca((url_len + 1) * sizeof(WCHAR));
+
+    mbstowcs_s(NULL, url_wc, url_len + 1, url, _TRUNCATE);
+
+    URL_COMPONENTS urlComp;
+    memset(&urlComp, 0, sizeof(urlComp));
+    urlComp.dwStructSize = sizeof(urlComp);
+    
+    urlComp.lpszHostName = host_wc;
+    urlComp.dwHostNameLength  = (DWORD)(url_len + 1);
+    
+    urlComp.lpszUrlPath = path_wc;
+    urlComp.dwUrlPathLength   = (DWORD)(url_len + 1);
+
+    // Crack the url_wc.
+    if (!WinHttpCrackUrl(url_wc, 0, 0, &urlComp)) {
+        log_msg("Error %u in WinHttpCrackUrl.", GetLastError());
+        goto error_out;
+    }
+
     char buffer[16 * 1024];
 
     // Use WinHttpOpen to obtain a session handle.
@@ -47,10 +74,6 @@ int tlsb_http_get(const char *url, FILE *f, int *ret_len)
             WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
             WINHTTP_NO_PROXY_NAME,
             WINHTTP_NO_PROXY_BYPASS, 0 );
-
-    int result = 0;
-    if (ret_len)
-        *ret_len = 0;
 
     if (NULL == hSession) {
         log_msg("Can't open HTTP session");
@@ -62,32 +85,30 @@ int tlsb_http_get(const char *url, FILE *f, int *ret_len)
         goto error_out;
     }
     
-    hConnect = WinHttpConnect(hSession, L"www.simbrief.com", INTERNET_DEFAULT_HTTPS_PORT, 0);
+    hConnect = WinHttpConnect(hSession, host_wc, urlComp.nPort, 0);
     if (NULL == hConnect) {
         log_msg("Can't open HTTP session");
         goto error_out;
     }
 
-    wchar_t object[200];
-    size_t converted;
-    mbstowcs_s(&converted, object, sizeof(object), url, _TRUNCATE);
-    hRequest = WinHttpOpenRequest(hConnect, L"GET", object, NULL, WINHTTP_NO_REFERER,
-                                  WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
+    hRequest = WinHttpOpenRequest(hConnect, L"GET", path_wc, NULL, WINHTTP_NO_REFERER,
+                                  WINHTTP_DEFAULT_ACCEPT_TYPES,
+                                  (urlComp.nScheme == INTERNET_SCHEME_HTTPS) ? WINHTTP_FLAG_SECURE : 0);
     if (NULL == hRequest) {
-        log_msg("Can't open HTTP request");
+        log_msg("Can't open HTTP request: %u", GetLastError());
         goto error_out;
     }
 
     bResults = WinHttpSendRequest(hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0,
                                   WINHTTP_NO_REQUEST_DATA, 0, 0, 0);
     if (! bResults) {
-        log_msg("Can't send HTTP request");
+        log_msg("Can't send HTTP request: %u", GetLastError());
         goto error_out;
     }
 
     bResults = WinHttpReceiveResponse(hRequest, NULL);
     if (! bResults) {
-        log_msg("Can't receive response");
+        log_msg("Can't receive response", GetLastError());
         goto error_out;
     }
 
