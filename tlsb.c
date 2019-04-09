@@ -73,8 +73,11 @@ static int error_disabled;
 static char pref_path[512];
 static int tla3xx_detected;
 static char pilot_id[20];
-static int download_fpl, flag_download_pdf;
+static int flag_download_fms, flag_download_pdf;
 static char pdf_download_dir[200];
+
+static char msg_line_1[100];
+static char msg_line_2[100];
 
 static void
 map_datarefs()
@@ -123,7 +126,7 @@ save_pref()
 
     fputs(pilot_id, f); putc('\n', f);
     putc((flag_download_pdf ? '1' : '0'), f); fputs(pdf_download_dir, f); putc('\n', f);
-    putc((download_fpl ? '1' : '0'), f); putc('\n', f);
+    putc((flag_download_fms ? '1' : '0'), f); putc('\n', f);
     fclose(f);
 }
 
@@ -148,7 +151,7 @@ load_pref()
     if ('\n' == pdf_download_dir[len - 1]) pdf_download_dir[len - 1] = '\0';
 
     if (EOF == (c = fgetc(f))) goto out;
-    download_fpl = (c == '1' ? 1 : 0);
+    flag_download_fms = (c == '1' ? 1 : 0);
 
   out:
     fclose(f);
@@ -160,7 +163,7 @@ download_pdf()
     char URL[300], fn[500];
     FILE *f = NULL;
 
-    snprintf(URL, sizeof(URL), "%s/%s", ofp_info.sb_path, ofp_info.sb_pdf_link);
+    snprintf(URL, sizeof(URL), "%s%s", ofp_info.sb_path, ofp_info.sb_pdf_link);
     log_msg("URL '%s'", URL);
     snprintf(fn, sizeof(fn), "%s%ssb_ofp.pdf", pdf_download_dir, psep);
 
@@ -173,6 +176,34 @@ download_pdf()
         log_msg("Can't download '%s'", URL);
         goto err_out;
     }
+
+    snprintf(msg_line_1, sizeof(msg_line_1), "OFP pdf in '%s'", fn);
+
+  err_out:
+    if (f) fclose(f);
+}
+
+static void
+download_fms()
+{
+    char URL[300], fn[500];
+    FILE *f = NULL;
+
+    snprintf(URL, sizeof(URL), "%s%s", ofp_info.sb_path, ofp_info.sb_fms_link);
+    log_msg("URL '%s'", URL);
+    snprintf(fn, sizeof(fn), "%s%s%s%s19.fms", fms_path, psep, ofp_info.origin, ofp_info.destination);
+
+    if (NULL == (f = fopen(fn, "wb"))) {
+        log_msg("Can't create file '%s'", fn);
+        goto err_out;
+    }
+
+    if (0 == tlsb_http_get(URL, f, NULL)) {
+        log_msg("Can't download '%s'", URL);
+        goto err_out;
+    }
+
+    snprintf(msg_line_2, sizeof(msg_line_2), "FMS plan: '%s%s19'", ofp_info.origin, ofp_info.destination);
 
   err_out:
     if (f) fclose(f);
@@ -200,7 +231,7 @@ widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t p
     if ((widget_id == conf_ok_btn) && (msg == xpMsg_PushButtonPressed)) {
         XPGetWidgetDescriptor(pilot_id_input, pilot_id, sizeof(pilot_id));
         flag_download_pdf = XPGetWidgetProperty(conf_downl_pdf_btn, xpProperty_ButtonState, NULL);
-        download_fpl = XPGetWidgetProperty(conf_downl_fpl_btn, xpProperty_ButtonState, NULL);
+        flag_download_fms = XPGetWidgetProperty(conf_downl_fpl_btn, xpProperty_ButtonState, NULL);
         save_pref();
         XPHideWidget(conf_widget);
         return 1;
@@ -215,6 +246,9 @@ widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t p
 
     /* self sent message: fetch OFP (lengthy) */
     if ((widget_id == getofp_widget) && (MSG_GET_OFP == msg)) {
+        msg_line_1[0] = '\0';
+        msg_line_2[0] = '\0';
+
         tlsb_ofp_get_parse(pilot_id, &ofp_info);
         tlsb_dump_ofp_info(&ofp_info);
 
@@ -227,10 +261,12 @@ widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t p
             XPSetWidgetDescriptor(status_line, "");
             ofp_info.valid = 1;
             snprintf(ofp_info.altitude, sizeof(ofp_info.altitude), "%d", atoi(ofp_info.altitude) / 100);
-        }
 
-        if (ofp_info.valid && flag_download_pdf) {
-            download_pdf();
+            if (flag_download_pdf)
+                download_pdf();
+
+            if (flag_download_fms)
+                download_fms();
         }
 
         return 1;
@@ -311,6 +347,17 @@ widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t p
 
         DL("CI"); DF(right_col, ci);
         DL("CRZ FL:"); DF(right_col, altitude);
+
+        if (msg_line_1[0]) {
+            top -= 15;
+            XPLMDrawString(bg_color, left_col, top, msg_line_1, NULL, xplmFont_Proportional);
+        }
+
+        if (msg_line_2[0]) {
+            top -= 15;
+            XPLMDrawString(bg_color, left_col, top, msg_line_2, NULL, xplmFont_Proportional);
+        }
+
 		return 1;
 	}
 
@@ -326,7 +373,7 @@ menu_cb(void *menu_ref, void *item_ref)
         if (NULL == getofp_widget) {
             int left = 200;
             int top = 800;
-            int width = 400;
+            int width = 450;
             int height = 300;
 
             getofp_widget = XPCreateWidget(left, top, left + width, top - height,
@@ -418,7 +465,7 @@ menu_cb(void *menu_ref, void *item_ref)
         XPSetWidgetDescriptor(pilot_id_input, pilot_id);
         XPSetWidgetDescriptor(conf_downl_pdf_path, pdf_download_dir);
         XPSetWidgetProperty(conf_downl_pdf_btn, xpProperty_ButtonState, flag_download_pdf);
-        XPSetWidgetProperty(conf_downl_fpl_btn, xpProperty_ButtonState, download_fpl);
+        XPSetWidgetProperty(conf_downl_fpl_btn, xpProperty_ButtonState, flag_download_fms);
         XPShowWidget(conf_widget);
         return;
     }
