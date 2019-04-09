@@ -193,7 +193,7 @@ widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t p
     if ((widget_id == getofp_btn) && (msg == xpMsg_PushButtonPressed)) {
         XPSetWidgetDescriptor(status_line, "Fetching...");
         /* Send message to myself to get a draw cycle (draws button as selected) */
-        XPSendMessageToWidget(getofp_widget, MSG_GET_OFP, xpMode_Direct, 0, 0);
+        XPSendMessageToWidget(status_line, MSG_GET_OFP, xpMode_UpChain, 0, 0);
         return 1;
     }
 
@@ -340,8 +340,8 @@ menu_cb(void *menu_ref, void *item_ref)
                                       1, "Fetch OFP", 0, getofp_widget, xpWidgetClass_Button);
             XPAddWidgetCallback(getofp_btn, widget_cb);
 
-            top -= 20;
-            status_line = XPCreateWidget(left, top, left + width - 10, top - 20,
+            top -= 25;
+            status_line = XPCreateWidget(left1, top, left + width - 10, top - 20,
                                       1, "", 0, getofp_widget, xpWidgetClass_Caption);
 
             top -= 20;
