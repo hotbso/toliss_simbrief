@@ -211,7 +211,7 @@ download_fms()
 
 
 static int
-widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t param2)
+conf_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t param2)
 {
     if (msg == xpMessage_CloseButtonPushed) {
         XPHideWidget(widget_id);
@@ -220,13 +220,6 @@ widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t p
 
     if (error_disabled)
         return 1;
-
-    if ((widget_id == getofp_btn) && (msg == xpMsg_PushButtonPressed)) {
-        XPSetWidgetDescriptor(status_line, "Fetching...");
-        /* Send message to myself to get a draw cycle (draws button as selected) */
-        XPSendMessageToWidget(status_line, MSG_GET_OFP, xpMode_UpChain, 0, 0);
-        return 1;
-    }
 
     if ((widget_id == conf_ok_btn) && (msg == xpMsg_PushButtonPressed)) {
         XPGetWidgetDescriptor(pilot_id_input, pilot_id, sizeof(pilot_id));
@@ -241,6 +234,27 @@ widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t p
         if (get_clipboard(pdf_download_dir, sizeof(pdf_download_dir))) {
             XPSetWidgetDescriptor(conf_downl_pdf_path, pdf_download_dir);
         }
+        return 1;
+    }
+
+    return 0;
+}
+
+static int
+getofp_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t param2)
+{
+    if (msg == xpMessage_CloseButtonPushed) {
+        XPHideWidget(widget_id);
+        return 1;
+    }
+
+    if (error_disabled)
+        return 1;
+
+    if ((widget_id == getofp_btn) && (msg == xpMsg_PushButtonPressed)) {
+        XPSetWidgetDescriptor(status_line, "Fetching...");
+        /* Send message to myself to get a draw cycle (draws button as selected) */
+        XPSendMessageToWidget(status_line, MSG_GET_OFP, xpMode_UpChain, 0, 0);
         return 1;
     }
 
@@ -379,27 +393,25 @@ menu_cb(void *menu_ref, void *item_ref)
             getofp_widget = XPCreateWidget(left, top, left + width, top - height,
                                          0, "Toliss Simbrief Connector", 1, NULL, xpWidgetClass_MainWindow);
             XPSetWidgetProperty(getofp_widget, xpProperty_MainWindowHasCloseBoxes, 1);
-            XPAddWidgetCallback(getofp_widget, widget_cb);
+            XPAddWidgetCallback(getofp_widget, getofp_widget_cb);
             left += 5; top -= 25;
 
             int left1 = left + 10;
             getofp_btn = XPCreateWidget(left1, top, left1 + 60, top - 30,
                                       1, "Fetch OFP", 0, getofp_widget, xpWidgetClass_Button);
-            XPAddWidgetCallback(getofp_btn, widget_cb);
+            XPAddWidgetCallback(getofp_btn, getofp_widget_cb);
 
             top -= 25;
             status_line = XPCreateWidget(left1, top, left + width - 10, top - 20,
                                       1, "", 0, getofp_widget, xpWidgetClass_Caption);
 
             top -= 20;
-            log_msg("display_widget position %d", top);
             display_widget = XPCreateCustomWidget(left + 10, top, left + width -20, top - height + 10,
-                                                   1, "", 0, getofp_widget, widget_cb);
+                                                   1, "", 0, getofp_widget, getofp_widget_cb);
             top -= 50;
-            log_msg("Button position %d", top);
             xfer_load_btn = XPCreateWidget(left + 10, top, left + 160, top - 30,
                                       1, "Xfer Load data to ISCS", 0, getofp_widget, xpWidgetClass_Button);
-            XPAddWidgetCallback(xfer_load_btn, widget_cb);
+            XPAddWidgetCallback(xfer_load_btn, getofp_widget_cb);
         }
 
         XPShowWidget(getofp_widget);
@@ -416,7 +428,7 @@ menu_cb(void *menu_ref, void *item_ref)
             conf_widget = XPCreateWidget(left, top, left + width, top - height,
                                          0, "Toliss Simbrief Connector / Configuration", 1, NULL, xpWidgetClass_MainWindow);
             XPSetWidgetProperty(conf_widget, xpProperty_MainWindowHasCloseBoxes, 1);
-            XPAddWidgetCallback(conf_widget, widget_cb);
+            XPAddWidgetCallback(conf_widget, conf_widget_cb);
             left += 5; top -= 25;
             XPCreateWidget(left, top, left + width - 2 * 5, top - 15,
                            1, "Pilot Id", 0, conf_widget, xpWidgetClass_Caption);
@@ -444,7 +456,7 @@ menu_cb(void *menu_ref, void *item_ref)
 
             conf_downl_pdf_paste_btn = XPCreateWidget(left2 + 20 , top, left2 + 60, top - 20,
                                       1, "Paste", 0, conf_widget, xpWidgetClass_Button);
-            XPAddWidgetCallback(conf_downl_pdf_paste_btn, widget_cb);
+            XPAddWidgetCallback(conf_downl_pdf_paste_btn, conf_widget_cb);
 
             top -= 20;
             XPCreateWidget(left, top, left + width - 10, top - 20,
@@ -459,7 +471,7 @@ menu_cb(void *menu_ref, void *item_ref)
             log_msg("Button position %d", top);
             conf_ok_btn = XPCreateWidget(left + 10, top, left + 140, top - 30,
                                       1, "OK", 0, conf_widget, xpWidgetClass_Button);
-            XPAddWidgetCallback(conf_ok_btn, widget_cb);
+            XPAddWidgetCallback(conf_ok_btn, conf_widget_cb);
         }
 
         XPSetWidgetDescriptor(pilot_id_input, pilot_id);
