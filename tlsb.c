@@ -120,7 +120,7 @@ xfer_load_data()
 static void
 save_pref()
 {
-    FILE *f = fopen(pref_path, "w");
+    FILE *f = fopen(pref_path, "wb");
     if (NULL == f)
         return;
 
@@ -135,7 +135,7 @@ static void
 load_pref()
 {
     char c;
-    FILE *f  = fopen(pref_path, "r");
+    FILE *f  = fopen(pref_path, "rb");
     if (NULL == f)
         return;
 
