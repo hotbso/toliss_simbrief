@@ -49,6 +49,7 @@ tlsb_dump_ofp_info(ofp_info_t *ofp_info)
         L(sb_path);
         L(sb_pdf_link);
         L(sb_fms_link);
+        L(time_generated);
     } else {
         log_msg(ofp_info->errmsg);
     }
@@ -144,6 +145,10 @@ tlsb_ofp_get_parse(const char *pilot_id, ofp_info_t *ofp_info)
         if (strcmp(ofp_info->status, "Success")) {
             goto out;
         }
+    }
+
+    if (POSITION("params")) {
+        EXTRACT("time_generated", time_generated);
     }
 
     if (POSITION("aircraft")) {

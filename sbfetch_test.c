@@ -27,7 +27,7 @@ SOFTWARE.
 #include <stdarg.h>
 #include <malloc.h>
 #include <unistd.h>
-
+#include <time.h>
 #include "tlsb.h"
 
 int
@@ -41,6 +41,15 @@ main(int argc, char** argv)
     ofp_info_t ofp_info;
     tlsb_ofp_get_parse(argv[1], &ofp_info);
     tlsb_dump_ofp_info(&ofp_info);
-
-    exit(0);
+    time_t tg = atol(ofp_info.time_generated);
+    log_msg("tg %ul", tg);
+    struct tm tm;
+    gmtime_s(&tm, &tg);
+    char line[100];    
+    sprintf(line, "OFP generated at %4d-%02d-%02d %02d:%02d:%02d UTC",
+                   tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+                   tm.tm_hour, tm.tm_min, tm.tm_sec);
+    log_msg("'%s'", line);
+    
+exit(0);
 }

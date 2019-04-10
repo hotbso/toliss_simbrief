@@ -25,13 +25,10 @@ SOFTWARE.
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <ctype.h>
 #include <time.h>
 #include <stdarg.h>
-#include <dirent.h>
-#include <errno.h>
 #include <unistd.h>
-#include <sys/stat.h>
+#include <errno.h>
 
 #include "XPLMPlugin.h"
 #include "XPLMPlanes.h"
@@ -274,7 +271,16 @@ getofp_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, int
             XPSetWidgetDescriptor(status_line, "OFP is not for A319");
             memset(&ofp_info, 0, sizeof(ofp_info));
         } else {
-            XPSetWidgetDescriptor(status_line, "");
+            time_t tg = atol(ofp_info.time_generated);
+            struct tm tm;
+            gmtime_s(&tm, &tg);
+            char line[100];
+            /* strftime does not work for whatever reasons */
+            sprintf(line, "OFP generated at %4d-%02d-%02d %02d:%02d:%02d UTC",
+                           tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+                           tm.tm_hour, tm.tm_min, tm.tm_sec);
+         
+            XPSetWidgetDescriptor(status_line, line);
             ofp_info.valid = 1;
             snprintf(ofp_info.altitude, sizeof(ofp_info.altitude), "%d", atoi(ofp_info.altitude) / 100);
 
@@ -301,7 +307,6 @@ getofp_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, int
 
         int left, top;
         XPGetWidgetGeometry(display_widget, &left, &top, NULL, NULL);
-
         int left_col = left + 5;
         int right_col = left + 80;
         top -= 5;
@@ -319,8 +324,6 @@ getofp_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, int
         DL("Cargo:"); DX(cargo);
         DL("Fuel:"); DX(fuel_plan_ramp);
         // D(right_col, payload);
-
-        //log_msg("bottom of load position %d", top - 15);
 
         top -= 30;
 #define DF(left, field) \
@@ -470,7 +473,6 @@ menu_cb(void *menu_ref, void *item_ref)
             XPSetWidgetProperty(conf_downl_fpl_btn, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox);
 
             top -= 30;
-            log_msg("Button position %d", top);
             conf_ok_btn = XPCreateWidget(left + 10, top, left + 140, top - 30,
                                       1, "OK", 0, conf_widget, xpWidgetClass_Button);
             XPAddWidgetCallback(conf_ok_btn, conf_widget_cb);
@@ -558,10 +560,10 @@ XPluginReceiveMessage(XPLMPluginID in_from, long in_msg, void *in_param)
                     tla3xx_detected = 1;
 
                     XPLMMenuID menu = XPLMFindPluginsMenu();
-                    int sub_menu = XPLMAppendMenuItem(menu, "Toliss Simbrief", NULL, 1);
-                    tlsb_menu = XPLMCreateMenu("Toliss Simbrief", menu, sub_menu, menu_cb, NULL);
+                    int sub_menu = XPLMAppendMenuItem(menu, "Simbrief Connector", NULL, 1);
+                    tlsb_menu = XPLMCreateMenu("Simbrief Connector", menu, sub_menu, menu_cb, NULL);
                     XPLMAppendMenuItem(tlsb_menu, "Configure", &conf_widget, 0);
-                    XPLMAppendMenuItem(tlsb_menu, "Get OFP", &getofp_widget, 0);
+                    XPLMAppendMenuItem(tlsb_menu, "Fetch OFP", &getofp_widget, 0);
                }
             }
         break;

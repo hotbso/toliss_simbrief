@@ -47,6 +47,7 @@ typedef struct _ofp_info
     char sb_path[200];
     char sb_pdf_link[80];
     char sb_fms_link[80];
+    char time_generated[11];
 } ofp_info_t;
 
 extern int tlsb_http_get(const char *userid, FILE *f, int *retlen);

@@ -10,7 +10,7 @@ PLUGDIR=/e/X-Plane-11/Resources/plugins/toliss_simbrief
 CC=x86_64-w64-mingw32-gcc
 LD=x86_64-w64-mingw32-gcc
 
-CFLAGS+=-g0 -O2 -s -Wall -fdiagnostics-color -Wno-format-overflow -DWINDOWS -DWIN32 \
+CFLAGS+=-g0 -O2 -s -Wall -fdiagnostics-color -Wno-format-overflow -fno-builtin-strftime -DWINDOWS -DWIN32 \
 	-I$(SDK)/CHeaders/XPLM -I$(SDK)/CHeaders/Widgets -DIBM=1 \
     -DXPLM200 -DXPLM210 -DXPLM300 -DXPLM301 $(DEFINES)
 
