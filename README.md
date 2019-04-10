@@ -1,5 +1,7 @@
 # toliss_simbrief
 Connector for ToLiss A3xx to simbrief
 
-WIP
-Fetch OFP from simbrief and xfer load data to ISCS and some data to the FMGS.
+- fetch OFP from simbrief and xfer load data and fuel data to ISCS
+- download OFP pdf document to a directory of choice e.g for view in AVITAB
+- download flight plan
+- show essential data to complete your FMGS setup
