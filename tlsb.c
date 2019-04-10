@@ -223,6 +223,7 @@ conf_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intpt
 
     if ((widget_id == conf_ok_btn) && (msg == xpMsg_PushButtonPressed)) {
         XPGetWidgetDescriptor(pilot_id_input, pilot_id, sizeof(pilot_id));
+        XPGetWidgetDescriptor(conf_downl_pdf_path, pdf_download_dir, sizeof(pdf_download_dir));
         flag_download_pdf = XPGetWidgetProperty(conf_downl_pdf_btn, xpProperty_ButtonState, NULL);
         flag_download_fms = XPGetWidgetProperty(conf_downl_fpl_btn, xpProperty_ButtonState, NULL);
         save_pref();
@@ -231,8 +232,9 @@ conf_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intpt
     }
 
    if ((widget_id == conf_downl_pdf_paste_btn) && (msg == xpMsg_PushButtonPressed)) {
-        if (get_clipboard(pdf_download_dir, sizeof(pdf_download_dir))) {
-            XPSetWidgetDescriptor(conf_downl_pdf_path, pdf_download_dir);
+       char tmp[sizeof (pdf_download_dir)];
+        if (get_clipboard(tmp, sizeof(pdf_download_dir))) {
+            XPSetWidgetDescriptor(conf_downl_pdf_path, tmp);
         }
         return 1;
     }
