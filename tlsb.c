@@ -59,9 +59,18 @@ static XPWidgetID getofp_widget, display_widget, getofp_btn,
 static XPWidgetID conf_widget, pilot_id_input, conf_ok_btn,
                   conf_downl_pdf_btn, conf_downl_pdf_path, conf_downl_pdf_paste_btn, conf_downl_fpl_btn;
 
+typedef struct _widget_vr_ctx
+{
+    int in_vr;          /* currently in vr */
+    int l, t, w, h;     /* last geometry before bringing into vr */
+} widget_vr_ctx_t;
+
+static widget_vr_ctx_t getofp_widget_vr_ctx, conf_widget_vr_ctx;
+
 static ofp_info_t ofp_info;
 
-static XPLMDataRef no_pax_dr, pax_distrib_dr, aft_cargo_dr, fwd_cargo_dr, write_fob_dr;
+static XPLMDataRef no_pax_dr, pax_distrib_dr, aft_cargo_dr, fwd_cargo_dr,
+                   write_fob_dr, vr_enabled_dr;
 static XPLMCommandRef set_weight_cmdr;
 
 static int dr_mapped;
@@ -83,6 +92,8 @@ map_datarefs()
         return;
 
     dr_mapped = 1;
+
+    vr_enabled_dr = XPLMFindDataRef("sim/graphics/VR/enabled");
 
     if (NULL == (no_pax_dr = XPLMFindDataRef("AirbusFBW/NoPax"))) goto err;
     if (NULL == (pax_distrib_dr = XPLMFindDataRef("AirbusFBW/PaxDistrib"))) goto err;
@@ -207,6 +218,31 @@ download_fms()
 }
 
 
+static void
+show_widget(XPWidgetID widget, widget_vr_ctx_t *ctx)
+{
+    XPShowWidget(widget);
+
+    int in_vr = (NULL != vr_enabled_dr) && XPLMGetDatai(vr_enabled_dr);
+    if (in_vr) {
+        log_msg("VR mode detected");
+        XPLMWindowID window =  XPGetWidgetUnderlyingWindow(widget);
+        XPLMSetWindowPositioningMode(window, xplm_WindowVR, -1);
+        ctx->in_vr = 1;
+    } else {
+        if (ctx->in_vr) {
+            log_msg("widget now out of VR, map at (%d,%d)", ctx->l, ctx->t);
+            XPLMWindowID window =  XPGetWidgetUnderlyingWindow(widget);
+            XPLMSetWindowPositioningMode(window, xplm_WindowPositionFree, -1);
+
+            /* A resize is necessary so it shows up on the main screen again */
+            XPSetWidgetGeometry(widget, ctx->l, ctx->t, ctx->l + ctx->w, ctx->t - ctx->h);
+            ctx->in_vr = 0;
+        }
+    }
+}
+
+
 static int
 conf_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t param2)
 {
@@ -279,7 +315,7 @@ getofp_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, int
             sprintf(line, "OFP generated at %4d-%02d-%02d %02d:%02d:%02d UTC",
                            tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
                            tm.tm_hour, tm.tm_min, tm.tm_sec);
-         
+
             XPSetWidgetDescriptor(status_line, line);
             ofp_info.valid = 1;
             snprintf(ofp_info.altitude, sizeof(ofp_info.altitude), "%d", atoi(ofp_info.altitude) / 100);
@@ -395,6 +431,11 @@ menu_cb(void *menu_ref, void *item_ref)
             int width = 450;
             int height = 300;
 
+            getofp_widget_vr_ctx.l = left;
+            getofp_widget_vr_ctx.t = top;
+            getofp_widget_vr_ctx.w = width;
+            getofp_widget_vr_ctx.h = height;
+
             getofp_widget = XPCreateWidget(left, top, left + width, top - height,
                                          0, "Toliss Simbrief Connector", 1, NULL, xpWidgetClass_MainWindow);
             XPSetWidgetProperty(getofp_widget, xpProperty_MainWindowHasCloseBoxes, 1);
@@ -419,7 +460,7 @@ menu_cb(void *menu_ref, void *item_ref)
             XPAddWidgetCallback(xfer_load_btn, getofp_widget_cb);
         }
 
-        XPShowWidget(getofp_widget);
+        show_widget(getofp_widget, &getofp_widget_vr_ctx);
         return;
     }
 
@@ -429,6 +470,11 @@ menu_cb(void *menu_ref, void *item_ref)
             int top = 800;
             int width = 500;
             int height = 180;
+
+            conf_widget_vr_ctx.l = left;
+            conf_widget_vr_ctx.t = top;
+            conf_widget_vr_ctx.w = width;
+            conf_widget_vr_ctx.h = height;
 
             conf_widget = XPCreateWidget(left, top, left + width, top - height,
                                          0, "Toliss Simbrief Connector / Configuration", 1, NULL, xpWidgetClass_MainWindow);
@@ -482,7 +528,7 @@ menu_cb(void *menu_ref, void *item_ref)
         XPSetWidgetDescriptor(conf_downl_pdf_path, pdf_download_dir);
         XPSetWidgetProperty(conf_downl_pdf_btn, xpProperty_ButtonState, flag_download_pdf);
         XPSetWidgetProperty(conf_downl_fpl_btn, xpProperty_ButtonState, flag_download_fms);
-        XPShowWidget(conf_widget);
+        show_widget(conf_widget, &conf_widget_vr_ctx);
         return;
     }
 }
