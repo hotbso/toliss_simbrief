@@ -45,11 +45,13 @@ SOFTWARE.
 
 #define UNUSED(x) (void)(x)
 
-#define VERSION "1.00"
+#define VERSION "1.00b2"
 
 static char xpdir[512];
 static const char *psep;
 static char fms_path[512];
+
+char tlsb_tmp_fn[512];
 
 static XPLMMenuID tlsb_menu;
 
@@ -548,6 +550,9 @@ XPluginStart(char *out_name, char *out_sig, char *out_desc)
     XPLMGetSystemPath(xpdir);
     snprintf(fms_path, sizeof(fms_path), "%s%sOutput%sFMS plans%s",
              xpdir, psep, psep, psep);
+
+    snprintf(tlsb_tmp_fn, sizeof(tlsb_tmp_fn), "%s%sOutput%stlsb_download.tmp",
+             xpdir, psep, psep);
 
     /* load preferences */
     XPLMGetPrefsPath(pref_path);

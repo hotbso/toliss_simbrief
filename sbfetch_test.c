@@ -30,6 +30,8 @@ SOFTWARE.
 #include <time.h>
 #include "tlsb.h"
 
+char tlsb_tmp_fn[] = "xml.tmp";
+
 int
 main(int argc, char** argv)
 {
@@ -42,7 +44,7 @@ main(int argc, char** argv)
     tlsb_ofp_get_parse(argv[1], &ofp_info);
     tlsb_dump_ofp_info(&ofp_info);
     time_t tg = atol(ofp_info.time_generated);
-    log_msg("tg %ul", tg);
+    log_msg("tg %u", tg);
     struct tm tm;
     gmtime_s(&tm, &tg);
     char line[100];    

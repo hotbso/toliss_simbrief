@@ -50,6 +50,9 @@ typedef struct _ofp_info
     char time_generated[11];
 } ofp_info_t;
 
+/* tmpfile is unreliable on windows so we use this as filename */
+extern char tlsb_tmp_fn[];
+
 extern int tlsb_http_get(const char *userid, FILE *f, int *retlen);
 extern void log_msg(const char *fmt, ...);
 extern int tlsb_ofp_get_parse(const char *pilot_id, ofp_info_t *ofp_info);

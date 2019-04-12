@@ -97,32 +97,29 @@ do { \
 int
 tlsb_ofp_get_parse(const char *pilot_id, ofp_info_t *ofp_info)
 {
-    char *ofp;
+    char *ofp = NULL;
+    FILE *f = NULL;
+    
     memset(ofp_info, 0, sizeof(*ofp_info));
     int ofp_len;
 
-
-#if 1
     char url[100];
     sprintf(url, "https://www.simbrief.com/api/xml.fetcher.php?userid=%s", pilot_id);
     // log_msg(url);
-    //FILE *f = fopen("tlsb_ofp.xml", "w+");
-    FILE *f = tmpfile();
+
+    f = fopen(tlsb_tmp_fn, "wb+");
+    // is unrealiable on windows FILE *f = tmpfile();
+ 
     if (NULL == f) {
-        log_msg("Can't reate temporary file");
+        log_msg("Can't create temporary file");
         return 0;
     }
 
     int res = tlsb_http_get(url, f, &ofp_len);
-#else
-    FILE *f = fopen("tlsb_ofp.xml", "r");
-    int res = (f != NULL);
-#endif
 
-   if (0 == res) {
+    if (0 == res) {
         strcpy(ofp_info->status, "Network error");
-        fclose(f);
-        return 0;
+        goto out;
     }
 
     log_msg("got ofp %d bytes", ofp_len);
@@ -130,12 +127,11 @@ tlsb_ofp_get_parse(const char *pilot_id, ofp_info_t *ofp_info)
 
     if (NULL == (ofp = malloc(ofp_len+1))) {    /* + space for a terminating 0 */
         log_msg("can't malloc OFP xml buffer");
-        fclose(f);
-        return 0;
+        res = 0;
+        goto out;
     }
 
     ofp_len = fread(ofp, 1, ofp_len, f);
-    fclose(f);
     res = 1;
     ofp[ofp_len] = '\0';
 
@@ -198,6 +194,8 @@ tlsb_ofp_get_parse(const char *pilot_id, ofp_info_t *ofp_info)
     }
 
 out:
-    free(ofp);
-    return 1;
+    if (ofp) free(ofp);
+    if (f) fclose(f);
+    _unlink(tlsb_tmp_fn);   /* unchecked */
+    return res;
 }
