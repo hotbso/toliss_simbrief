@@ -31,7 +31,15 @@ SOFTWARE.
 #include "tlsb.h"
 
 char tlsb_tmp_fn[] = "xml.tmp";
+char pilot_id[20];
 
+/*
+ * call with
+ * sbfetch_test pilot_id
+ * or
+ * sbfetch_test -c
+ * to get from clipboard
+ */
 int
 main(int argc, char** argv)
 {
@@ -40,8 +48,19 @@ main(int argc, char** argv)
         exit(1);
     }
 
+    if (0 == strcmp(argv[1], "-c")) {
+        if (get_clipboard(pilot_id, sizeof(pilot_id) -1)) {
+            log_msg("From clipboard: '%s'", pilot_id);
+        } else {
+            log_msg("clipboard is empty");
+            exit(1);
+        }
+    } else {
+        strncpy(pilot_id, argv[1], sizeof(pilot_id) - 1);
+    }
+
     ofp_info_t ofp_info;
-    tlsb_ofp_get_parse(argv[1], &ofp_info);
+    tlsb_ofp_get_parse(pilot_id, &ofp_info);
     tlsb_dump_ofp_info(&ofp_info);
     time_t tg = atol(ofp_info.time_generated);
     log_msg("tg %u", tg);
@@ -51,11 +70,11 @@ main(int argc, char** argv)
 #else
     gmtime_r(&tg, &tm);
 #endif
-    char line[100];    
+    char line[100];
     sprintf(line, "OFP generated at %4d-%02d-%02d %02d:%02d:%02d UTC",
                    tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
                    tm.tm_hour, tm.tm_min, tm.tm_sec);
     log_msg("'%s'", line);
-    
+
 exit(0);
 }
