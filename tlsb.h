@@ -48,6 +48,7 @@ typedef struct _ofp_info
     char sb_pdf_link[80];
     char sb_fms_link[80];
     char time_generated[11];
+    char est_time_enroute[11];
 } ofp_info_t;
 
 /* tmpfile is unreliable on windows so we use this as filename */

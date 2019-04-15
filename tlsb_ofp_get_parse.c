@@ -52,6 +52,7 @@ tlsb_dump_ofp_info(ofp_info_t *ofp_info)
         L(pax_count);
         L(cargo);
         L(payload);
+        L(est_time_enroute);
         L(sb_path);
         L(sb_pdf_link);
         L(sb_fms_link);
@@ -185,6 +186,10 @@ tlsb_ofp_get_parse(const char *pilot_id, ofp_info_t *ofp_info)
         EXTRACT("payload", payload);
     }
 
+    if (POSITION("times")) {
+        EXTRACT("est_time_enroute", est_time_enroute);
+    }
+    
     if (POSITION("fms_downloads")) {
         EXTRACT("directory", sb_path);
     }

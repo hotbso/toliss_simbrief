@@ -61,13 +61,14 @@ static XPWidgetID getofp_widget, display_widget, getofp_btn,
 static XPWidgetID conf_widget, pilot_id_input, conf_ok_btn,
                   conf_downl_pdf_btn, conf_downl_pdf_path, conf_downl_pdf_paste_btn, conf_downl_fpl_btn;
 
-typedef struct _widget_vr_ctx
+typedef struct _widget_ctx
 {
+    XPWidgetID widget;
     int in_vr;          /* currently in vr */
     int l, t, w, h;     /* last geometry before bringing into vr */
-} widget_vr_ctx_t;
+} widget_ctx_t;
 
-static widget_vr_ctx_t getofp_widget_vr_ctx, conf_widget_vr_ctx;
+static widget_ctx_t getofp_widget_ctx, conf_widget_ctx;
 
 static ofp_info_t ofp_info;
 
@@ -221,24 +222,24 @@ download_fms()
 
 
 static void
-show_widget(XPWidgetID widget, widget_vr_ctx_t *ctx)
+show_widget(widget_ctx_t *ctx)
 {
-    XPShowWidget(widget);
+    XPShowWidget(ctx->widget);
 
     int in_vr = (NULL != vr_enabled_dr) && XPLMGetDatai(vr_enabled_dr);
     if (in_vr) {
         log_msg("VR mode detected");
-        XPLMWindowID window =  XPGetWidgetUnderlyingWindow(widget);
+        XPLMWindowID window =  XPGetWidgetUnderlyingWindow(ctx->widget);
         XPLMSetWindowPositioningMode(window, xplm_WindowVR, -1);
         ctx->in_vr = 1;
     } else {
         if (ctx->in_vr) {
             log_msg("widget now out of VR, map at (%d,%d)", ctx->l, ctx->t);
-            XPLMWindowID window =  XPGetWidgetUnderlyingWindow(widget);
+            XPLMWindowID window =  XPGetWidgetUnderlyingWindow(ctx->widget);
             XPLMSetWindowPositioningMode(window, xplm_WindowPositionFree, -1);
 
             /* A resize is necessary so it shows up on the main screen again */
-            XPSetWidgetGeometry(widget, ctx->l, ctx->t, ctx->l + ctx->w, ctx->t - ctx->h);
+            XPSetWidgetGeometry(ctx->widget, ctx->l, ctx->t, ctx->l + ctx->w, ctx->t - ctx->h);
             ctx->in_vr = 0;
         }
     }
@@ -311,7 +312,11 @@ getofp_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, int
         } else {
             time_t tg = atol(ofp_info.time_generated);
             struct tm tm;
+#ifdef WINDOWS
             gmtime_s(&tm, &tg);
+#else
+            gmtime_r(&tg, &tm);
+#endif
             char line[100];
             /* strftime does not work for whatever reasons */
             sprintf(line, "OFP generated at %4d-%02d-%02d %02d:%02d:%02d UTC",
@@ -402,6 +407,12 @@ getofp_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, int
 
         XPLMDrawString(bg_color, right_col, top, rptr, NULL, xplmFont_Basic);
 
+        char ttstr[10];
+        sprintf(ttstr, "%04d min", (atoi(ofp_info.est_time_enroute) + 30) / 60);
+
+        DL("Trip time");
+        XPLMDrawString(bg_color, right_col, top, ttstr, NULL, xplmFont_Basic);
+
         DL("CI"); DF(right_col, ci);
         DL("CRZ FL:"); DF(right_col, altitude);
 
@@ -433,13 +444,15 @@ menu_cb(void *menu_ref, void *item_ref)
             int width = 450;
             int height = 300;
 
-            getofp_widget_vr_ctx.l = left;
-            getofp_widget_vr_ctx.t = top;
-            getofp_widget_vr_ctx.w = width;
-            getofp_widget_vr_ctx.h = height;
+            getofp_widget_ctx.l = left;
+            getofp_widget_ctx.t = top;
+            getofp_widget_ctx.w = width;
+            getofp_widget_ctx.h = height;
 
             getofp_widget = XPCreateWidget(left, top, left + width, top - height,
                                          0, "Toliss Simbrief Connector", 1, NULL, xpWidgetClass_MainWindow);
+            getofp_widget_ctx.widget = getofp_widget;
+
             XPSetWidgetProperty(getofp_widget, xpProperty_MainWindowHasCloseBoxes, 1);
             XPAddWidgetCallback(getofp_widget, getofp_widget_cb);
             left += 5; top -= 25;
@@ -462,24 +475,26 @@ menu_cb(void *menu_ref, void *item_ref)
             XPAddWidgetCallback(xfer_load_btn, getofp_widget_cb);
         }
 
-        show_widget(getofp_widget, &getofp_widget_vr_ctx);
+        show_widget(&getofp_widget_ctx);
         return;
     }
 
     if (item_ref == &conf_widget) {
         if (NULL == conf_widget) {
             int left = 250;
-            int top = 800;
+            int top = 780;
             int width = 500;
             int height = 180;
 
-            conf_widget_vr_ctx.l = left;
-            conf_widget_vr_ctx.t = top;
-            conf_widget_vr_ctx.w = width;
-            conf_widget_vr_ctx.h = height;
+            conf_widget_ctx.l = left;
+            conf_widget_ctx.t = top;
+            conf_widget_ctx.w = width;
+            conf_widget_ctx.h = height;
 
             conf_widget = XPCreateWidget(left, top, left + width, top - height,
                                          0, "Toliss Simbrief Connector / Configuration", 1, NULL, xpWidgetClass_MainWindow);
+            conf_widget_ctx.widget = conf_widget;
+
             XPSetWidgetProperty(conf_widget, xpProperty_MainWindowHasCloseBoxes, 1);
             XPAddWidgetCallback(conf_widget, conf_widget_cb);
             left += 5; top -= 25;
@@ -530,7 +545,7 @@ menu_cb(void *menu_ref, void *item_ref)
         XPSetWidgetDescriptor(conf_downl_pdf_path, pdf_download_dir);
         XPSetWidgetProperty(conf_downl_pdf_btn, xpProperty_ButtonState, flag_download_pdf);
         XPSetWidgetProperty(conf_downl_fpl_btn, xpProperty_ButtonState, flag_download_fms);
-        show_widget(conf_widget, &conf_widget_vr_ctx);
+        show_widget(&conf_widget_ctx);
         return;
     }
 }

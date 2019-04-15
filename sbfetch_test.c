@@ -66,7 +66,7 @@ main(int argc, char** argv)
     time_t tg = atol(ofp_info.time_generated);
     log_msg("tg %u", tg);
     struct tm tm;
-#ifdef WIN
+#ifdef WINDOWS
     gmtime_s(&tm, &tg);
 #else
     gmtime_r(&tg, &tm);
