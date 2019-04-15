@@ -25,10 +25,16 @@ SOFTWARE.
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "tlsb.h"
 #include <errno.h>
+#include <unistd.h>
+
+#include "tlsb.h"
 
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
+
+#ifdef WIN
+#define unlink(f) _unlink(f)
+#endif
 
 void
 tlsb_dump_ofp_info(ofp_info_t *ofp_info)
@@ -196,6 +202,6 @@ tlsb_ofp_get_parse(const char *pilot_id, ofp_info_t *ofp_info)
 out:
     if (ofp) free(ofp);
     if (f) fclose(f);
-    _unlink(tlsb_tmp_fn);   /* unchecked */
+    unlink(tlsb_tmp_fn);   /* unchecked */
     return res;
 }

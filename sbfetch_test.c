@@ -46,7 +46,11 @@ main(int argc, char** argv)
     time_t tg = atol(ofp_info.time_generated);
     log_msg("tg %u", tg);
     struct tm tm;
+#ifdef WIN
     gmtime_s(&tm, &tg);
+#else
+    gmtime_r(&tg, &tm);
+#endif
     char line[100];    
     sprintf(line, "OFP generated at %4d-%02d-%02d %02d:%02d:%02d UTC",
                    tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
