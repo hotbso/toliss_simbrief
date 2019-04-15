@@ -1,7 +1,7 @@
 /*
 MIT License
 
-Copyright (c) 2019 Holger Teutsch
+Copyright (c) 2019 Holger Teutsch / Bajan002
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -28,12 +28,6 @@ SOFTWARE.
 
 #include "tlsb.h"
 
-static size_t write_data(void *ptr, size_t size, size_t nmemb, void *stream)
-{
-  size_t written = fwrite(ptr, size, nmemb, (FILE *)stream);
-  return written;
-}
-
 int tlsb_http_get(const char *url, FILE *f, int *ret_len)
 {
   CURL *curl;
@@ -43,7 +37,7 @@ int tlsb_http_get(const char *url, FILE *f, int *ret_len)
   if(!curl) return 0;
   curl_easy_setopt(curl, CURLOPT_URL, url);
   curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);
-  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
+  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, fwrite);
   curl_easy_setopt(curl, CURLOPT_WRITEDATA, f);
   curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
   curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
@@ -53,8 +47,8 @@ int tlsb_http_get(const char *url, FILE *f, int *ret_len)
       fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
       return 0;
   }
-  curl_off_t dl;
-  res = curl_easy_getinfo(curl, CURLINFO_SIZE_DOWNLOAD_T, &dl);
+  double dl;
+  res = curl_easy_getinfo(curl, CURLINFO_SIZE_DOWNLOAD, &dl);
   if(res == CURLE_OK && ret_len) *ret_len = (int)dl;
   curl_easy_cleanup(curl);
   curl_global_cleanup();
