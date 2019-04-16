@@ -348,18 +348,20 @@ getofp_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, int
         static float xfer_color[] = { 0.0, 0.5, 0.0 };
         static float bg_color[] = { 0.0, 0.3, 0.3 };
 
-        int left, top;
-        XPGetWidgetGeometry(display_widget, &left, &top, NULL, NULL);
+        int left, top, right, bottom;
+        XPGetWidgetGeometry(display_widget, &left, &top, &right, &bottom);
+        log_msg("display_widget start %d %d %d %d", left, top, right, bottom);
+
         int left_col = left + 5;
         int right_col = left + 80;
-        top -= 5;
+        int y = top - 5;
 
 #define DL(TXT) \
-    top -= 15; \
-    XPLMDrawString(label_color, left_col, top, TXT, NULL, xplmFont_Proportional)
+    y -= 15; \
+    XPLMDrawString(label_color, left_col, y, TXT, NULL, xplmFont_Proportional)
 
 #define DX(field) \
-    XPLMDrawString(xfer_color, right_col, top, ofp_info.field, NULL, xplmFont_Basic)
+    XPLMDrawString(xfer_color, right_col, y, ofp_info.field, NULL, xplmFont_Basic)
 
         //DL("Pax:"); DF(right_col, max_passengers);
         // D(right_col, oew);
@@ -368,9 +370,9 @@ getofp_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, int
         DL("Fuel:"); DX(fuel_plan_ramp);
         // D(right_col, payload);
 
-        top -= 30;
+        y -= 30;
 #define DF(left, field) \
-    XPLMDrawString(bg_color, left, top, ofp_info.field, NULL, xplmFont_Basic)
+    XPLMDrawString(bg_color, left, y, ofp_info.field, NULL, xplmFont_Basic)
 
         // D(aircraft_icao);
         DL("Departure:"); DF(right_col, origin); DF(right_col + 50, origin_rwy);
@@ -399,31 +401,59 @@ getofp_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, int
             /* write that fragment */
             c = *cptr;
             *cptr = '\0';
-            XPLMDrawString(bg_color, right_col, top, rptr, NULL, xplmFont_Basic);
-            top -= 15;
+            XPLMDrawString(bg_color, right_col, y, rptr, NULL, xplmFont_Basic);
+            y -= 15;
             *cptr = c;
             rptr = cptr + 1;    /* behind the blank */
         }
 
-        XPLMDrawString(bg_color, right_col, top, rptr, NULL, xplmFont_Basic);
+        XPLMDrawString(bg_color, right_col, y, rptr, NULL, xplmFont_Basic);
 
-        char ttstr[10];
-        sprintf(ttstr, "%04d min", (atoi(ofp_info.est_time_enroute) + 30) / 60);
 
         DL("Trip time");
-        XPLMDrawString(bg_color, right_col, top, ttstr, NULL, xplmFont_Basic);
+        if (ofp_info.est_time_enroute[0]) {
+            char ttstr[10];
+            int ttmin = (atoi(ofp_info.est_time_enroute) + 30) / 60;
+            sprintf(ttstr, "%02d%02d", ttmin / 60, ttmin % 60);
+            XPLMDrawString(bg_color, right_col, y, ttstr, NULL, xplmFont_Basic);
+        }
 
         DL("CI"); DF(right_col, ci);
         DL("CRZ FL:"); DF(right_col, altitude);
 
         if (msg_line_1[0]) {
-            top -= 15;
-            XPLMDrawString(bg_color, left_col, top, msg_line_1, NULL, xplmFont_Proportional);
+            y -= 15;
+            XPLMDrawString(bg_color, left_col, y, msg_line_1, NULL, xplmFont_Proportional);
         }
 
         if (msg_line_2[0]) {
-            top -= 15;
-            XPLMDrawString(bg_color, left_col, top, msg_line_2, NULL, xplmFont_Proportional);
+            y -= 15;
+            XPLMDrawString(bg_color, left_col, y, msg_line_2, NULL, xplmFont_Proportional);
+        }
+
+        /* adjust height of window */
+        y -= 10;
+
+        //log_msg("y %d, bottom %d", y, bottom);
+        int pleft, ptop, pright, pbottom;
+        XPGetWidgetGeometry(getofp_widget, &pleft, &ptop, &pright, &pbottom);
+
+        if (y != pbottom) {
+            //log_msg("main_widget before %d %d %d %d", pleft, ptop, pright, pbottom);
+            XPSetWidgetGeometry(getofp_widget, pleft, ptop, pright, y);
+            //log_msg("main_widget set %d %d %d %d", pleft, ptop, pright, y);
+            getofp_widget_ctx.h = ptop - y;
+
+            /* widgets are internally managed relative to the left lower corner.
+               So if we resize a container we must shift all childs accordingly. */
+            int delta = y - pbottom;
+            int nchild = XPCountChildWidgets(getofp_widget);
+            for (int i = 0; i < nchild; i++) {
+                int cleft, ctop, cright, cbottom;
+                XPWidgetID cw = XPGetNthChildWidget(getofp_widget, i);
+                XPGetWidgetGeometry(cw, &cleft, &ctop, &cright, &cbottom);
+                XPSetWidgetGeometry(cw, cleft, ctop - delta, cright, cbottom - delta);
+            }
         }
 
 		return 1;
