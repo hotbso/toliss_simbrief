@@ -45,7 +45,7 @@ SOFTWARE.
 
 #define UNUSED(x) (void)(x)
 
-#define VERSION "1.00b2"
+#define VERSION "1.00b3"
 
 static char xpdir[512];
 static const char *psep;
@@ -87,6 +87,7 @@ static char pdf_download_dir[200];
 
 static char msg_line_1[100];
 static char msg_line_2[100];
+
 
 static void
 map_datarefs()
@@ -380,7 +381,7 @@ getofp_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, int
         DL("Route:");
 
         /* break route to this # of chars */
-#define ROUTE_BRK 45
+#define ROUTE_BRK 50
         char *rptr = ofp_info.route;
         while (1) {
             int len = strlen(rptr);
@@ -434,14 +435,11 @@ getofp_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, int
         /* adjust height of window */
         y -= 10;
 
-        //log_msg("y %d, bottom %d", y, bottom);
         int pleft, ptop, pright, pbottom;
         XPGetWidgetGeometry(getofp_widget, &pleft, &ptop, &pright, &pbottom);
 
         if (y != pbottom) {
-            //log_msg("main_widget before %d %d %d %d", pleft, ptop, pright, pbottom);
             XPSetWidgetGeometry(getofp_widget, pleft, ptop, pright, y);
-            //log_msg("main_widget set %d %d %d %d", pleft, ptop, pright, y);
             getofp_widget_ctx.h = ptop - y;
 
             /* widgets are internally managed relative to the left lower corner.
