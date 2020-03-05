@@ -45,7 +45,7 @@ SOFTWARE.
 
 #define UNUSED(x) (void)(x)
 
-#define VERSION "1.00b3"
+#define VERSION "1.00b4"
 
 static char xpdir[512];
 static const char *psep;
@@ -84,6 +84,7 @@ static int tla3xx_detected;
 static char pilot_id[20];
 static int flag_download_fms, flag_download_pdf;
 static char pdf_download_dir[200];
+static char acf_file[256];
 
 static char msg_line_1[100];
 static char msg_line_2[100];
@@ -307,8 +308,10 @@ getofp_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, int
 
         if (strcmp(ofp_info.status, "Success")) {
             XPSetWidgetDescriptor(status_line, ofp_info.status);
-        } else if (strcmp(ofp_info.aircraft_icao, "A319")) {
-            XPSetWidgetDescriptor(status_line, "OFP is not for A319");
+        } else if (strcmp(ofp_info.aircraft_icao, acf_file)) {
+            char line[100];
+            sprintf(line, "OFP is not for %s", acf_file);
+            XPSetWidgetDescriptor(status_line, line);
             memset(&ofp_info, 0, sizeof(ofp_info));
         } else {
             time_t tg = atol(ofp_info.time_generated);
@@ -587,7 +590,7 @@ XPluginStart(char *out_name, char *out_sig, char *out_desc)
 
     strcpy(out_name, "toliss_simbrief " VERSION);
     strcpy(out_sig, "tlsb-hotbso");
-    strcpy(out_desc, "A plugin that connects simbrief to the ToLiss A319");
+    strcpy(out_desc, "A plugin that connects simbrief to the ToLiss A319/A321");
 
     psep = XPLMGetDirectorySeparator();
     XPLMGetSystemPath(xpdir);
@@ -636,21 +639,24 @@ XPluginReceiveMessage(XPLMPluginID in_from, long in_msg, void *in_param)
         case XPLM_MSG_PLANE_LOADED:
             if (in_param == 0) {
                 char acf_path[512];
-                char acf_file[256];
 
                 XPLMGetNthAircraftModel(XPLM_USER_AIRCRAFT, acf_file, acf_path);
                 log_msg(acf_file);
-
-                if (0 == strncmp(acf_file, "a319", 4)) {
-                    XPLMGetSystemPath(acf_file);
-                    char *s = acf_file + strlen(acf_file);
+ 
+                acf_file[4] = '\0';     /* be safe */
+                strupr(acf_file);
+                
+                if ((0 == strcmp(acf_file, "A319")) || (0 == strcmp(acf_file, "A321"))) {
+                    char path[512];
+                    XPLMGetSystemPath(path);
+                    char *s = path + strlen(path);
 
                     /* check for directory */
                     sprintf(s, "Resources%splugins%sToLissData%sSituations", psep, psep, psep);
-                    if (0 != access(acf_file, F_OK))
+                    if (0 != access(path, F_OK))
                         return;
 
-                    log_msg("Detected ToLiss A319");
+                    log_msg("Detected ToLiss A319/A321");
                     tla3xx_detected = 1;
 
                     XPLMMenuID menu = XPLMFindPluginsMenu();
