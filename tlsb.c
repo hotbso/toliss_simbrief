@@ -644,7 +644,8 @@ XPluginReceiveMessage(XPLMPluginID in_from, long in_msg, void *in_param)
                 log_msg(acf_file);
  
                 acf_file[4] = '\0';     /* be safe */
-                strupr(acf_file);
+                for (int i = 0; i < 4; i++)
+                    acf_file[i] = toupper(acf_file[i]);
                 
                 if ((0 == strcmp(acf_file, "A319")) || (0 == strcmp(acf_file, "A321"))) {
                     XPLMGetSystemPath(path);
