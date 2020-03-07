@@ -45,7 +45,7 @@ SOFTWARE.
 
 #define UNUSED(x) (void)(x)
 
-#define VERSION "1.00b4"
+#define VERSION "1.00b5"
 
 static char xpdir[512];
 static const char *psep;
@@ -638,16 +638,15 @@ XPluginReceiveMessage(XPLMPluginID in_from, long in_msg, void *in_param)
     switch (in_msg) {
         case XPLM_MSG_PLANE_LOADED:
             if (in_param == 0) {
-                char acf_path[512];
+                char path[512];
 
-                XPLMGetNthAircraftModel(XPLM_USER_AIRCRAFT, acf_file, acf_path);
+                XPLMGetNthAircraftModel(XPLM_USER_AIRCRAFT, acf_file, path);
                 log_msg(acf_file);
  
                 acf_file[4] = '\0';     /* be safe */
                 strupr(acf_file);
                 
                 if ((0 == strcmp(acf_file, "A319")) || (0 == strcmp(acf_file, "A321"))) {
-                    char path[512];
                     XPLMGetSystemPath(path);
                     char *s = path + strlen(path);
 
