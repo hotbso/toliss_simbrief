@@ -588,6 +588,7 @@ XPluginStart(char *out_name, char *out_sig, char *out_desc)
 {
     /* Always use Unix-native paths on the Mac! */
     XPLMEnableFeature("XPLM_USE_NATIVE_PATHS", 1);
+    XPLMEnableFeature("XPLM_USE_NATIVE_WIDGET_WINDOWS", 1);
 
     strcpy(out_name, "toliss_simbrief " VERSION);
     strcpy(out_sig, "tlsb-hotbso");
