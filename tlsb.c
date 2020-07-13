@@ -355,7 +355,7 @@ getofp_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, int
 
         int left, top, right, bottom;
         XPGetWidgetGeometry(display_widget, &left, &top, &right, &bottom);
-        log_msg("display_widget start %d %d %d %d", left, top, right, bottom);
+        // log_msg("display_widget start %d %d %d %d", left, top, right, bottom);
 
         int left_col = left + 5;
         int right_col = left + 80;
