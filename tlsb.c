@@ -46,7 +46,7 @@ SOFTWARE.
 
 #define UNUSED(x) (void)(x)
 
-#define VERSION "1.00b5"
+#define VERSION "1.00b6"
 
 static char xpdir[512];
 static const char *psep;
