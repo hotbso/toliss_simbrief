@@ -39,7 +39,7 @@ SOFTWARE.
 void
 tlsb_dump_ofp_info(ofp_info_t *ofp_info)
 {
-    if (ofp_info->status) {
+    if (0 == strcmp(ofp_info->status, "Success")) {
 #define L(field) log_msg(#field ": %s", ofp_info->field)
 
         L(aircraft_icao);
@@ -58,7 +58,7 @@ tlsb_dump_ofp_info(ofp_info_t *ofp_info)
         L(sb_fms_link);
         L(time_generated);
     } else {
-        log_msg(ofp_info->errmsg);
+        log_msg(ofp_info->status);
     }
 }
 
