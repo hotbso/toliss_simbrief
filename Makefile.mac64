@@ -10,7 +10,7 @@ PLUGDIR=../X-Plane/Resources/plugins/toliss_simbrief
 CC=clang
 LD=clang
 
-CFLAGS+=-O2 -Wall -fPIC -fdiagnostics-color -fvisibility=hidden -mmacosx-version-min=10.9 \
+CFLAGS+=-O2 -Wall -fPIC -fdiagnostics-color -fvisibility=hidden -mmacosx-version-min=10.11 \
 	-I$(SDK)/CHeaders/XPLM -I$(SDK)/CHeaders/Widgets -DAPL=1 \
     -DXPLM200 -DXPLM210 -DXPLM300 -DXPLM301 $(DEFINES)
 
