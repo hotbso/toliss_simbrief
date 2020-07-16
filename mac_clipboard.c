@@ -2,6 +2,7 @@
 MIT License
 
 Copyright (c) 2019 Holger Teutsch / Bajan002
+Copyright (c) 2020 Timothy D. Walker
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -28,7 +29,7 @@ SOFTWARE.
 int
 get_clipboard(char *buffer, int buflen)
 {
-    FILE *fp = popen("xclip -o", "r");
+    FILE *fp = popen("pbpaste -pboard general -Prefer txt", "r");
     if (fp == NULL)  return 0;
     fgets(buffer, buflen, fp);
     pclose(fp);
