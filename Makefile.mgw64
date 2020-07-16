@@ -33,7 +33,7 @@ win.xpl: $(OBJECTS)
 	$(LD) -o $@ $(LDFLAGS) $(OBJECTS) $(LIBS)
 
 clean:
-	rm $(OBJECTS) $(TARGET)
+	rm -f $(OBJECTS) $(TARGET)
 
 # install the just compiled target
 install: $(TARGET)
