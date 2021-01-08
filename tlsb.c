@@ -309,12 +309,8 @@ getofp_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, int
 
         if (strcmp(ofp_info.status, "Success")) {
             XPSetWidgetDescriptor(status_line, ofp_info.status);
-        } else if (strcmp(ofp_info.aircraft_icao, acf_file)) {
-            char line[100];
-            sprintf(line, "OFP is not for %s", acf_file);
-            XPSetWidgetDescriptor(status_line, line);
-            memset(&ofp_info, 0, sizeof(ofp_info));
-        } else {
+        } else if ((0 == strcmp(ofp_info.aircraft_icao, acf_file))
+                   || ((0 == strcmp(ofp_info.aircraft_icao, "A21N")) && (0 == strcmp(acf_file, "A321")))) {
             time_t tg = atol(ofp_info.time_generated);
             struct tm tm;
 #ifdef WINDOWS
@@ -337,6 +333,11 @@ getofp_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, int
 
             if (flag_download_fms)
                 download_fms();
+        } else {
+            char line[100];
+            sprintf(line, "OFP is not for %s", acf_file);
+            XPSetWidgetDescriptor(status_line, line);
+            memset(&ofp_info, 0, sizeof(ofp_info));
         }
 
         return 1;
