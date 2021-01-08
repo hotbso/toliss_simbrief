@@ -117,6 +117,9 @@ err:
 static void
 xfer_load_data()
 {
+    if (!ofp_info.valid)
+        return;
+
     map_datarefs();
     if (error_disabled)
         return;
@@ -227,6 +230,9 @@ download_fms()
 static void
 show_widget(widget_ctx_t *ctx)
 {
+    if (XPIsWidgetVisible(ctx->widget))
+        return;
+
     XPShowWidget(ctx->widget);
 
     int in_vr = (NULL != vr_enabled_dr) && XPLMGetDatai(vr_enabled_dr);
@@ -281,6 +287,57 @@ conf_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intpt
     return 0;
 }
 
+// return success == 1
+static int
+fetch_ofp(void)
+{
+    msg_line_1[0] = '\0';
+    msg_line_2[0] = '\0';
+
+    ofp_info.valid = 0;
+
+    tlsb_ofp_get_parse(pilot_id, &ofp_info);
+    tlsb_dump_ofp_info(&ofp_info);
+
+    if (strcmp(ofp_info.status, "Success")) {
+        XPSetWidgetDescriptor(status_line, ofp_info.status);
+        return 0; // error
+    }
+
+    if ((0 == strcmp(ofp_info.aircraft_icao, acf_file))
+        || ((0 == strcmp(ofp_info.aircraft_icao, "A21N")) && (0 == strcmp(acf_file, "A321")))) {
+        time_t tg = atol(ofp_info.time_generated);
+        struct tm tm;
+    #ifdef WINDOWS
+        gmtime_s(&tm, &tg);
+    #else
+        gmtime_r(&tg, &tm);
+    #endif
+        char line[100];
+        /* strftime does not work for whatever reasons */
+        sprintf(line, "OFP generated at %4d-%02d-%02d %02d:%02d:%02d UTC",
+                       tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+                       tm.tm_hour, tm.tm_min, tm.tm_sec);
+
+        XPSetWidgetDescriptor(status_line, line);
+        ofp_info.valid = 1;
+        snprintf(ofp_info.altitude, sizeof(ofp_info.altitude), "%d", atoi(ofp_info.altitude) / 100);
+
+        if (flag_download_pdf)
+            download_pdf();
+
+        if (flag_download_fms)
+            download_fms();
+        return 1;
+        }
+
+    char line[100];
+    sprintf(line, "OFP is not for %s", acf_file);
+    XPSetWidgetDescriptor(status_line, line);
+    memset(&ofp_info, 0, sizeof(ofp_info));
+    return 0;
+}
+
 static int
 getofp_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t param2)
 {
@@ -301,45 +358,7 @@ getofp_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, int
 
     /* self sent message: fetch OFP (lengthy) */
     if ((widget_id == getofp_widget) && (MSG_GET_OFP == msg)) {
-        msg_line_1[0] = '\0';
-        msg_line_2[0] = '\0';
-
-        tlsb_ofp_get_parse(pilot_id, &ofp_info);
-        tlsb_dump_ofp_info(&ofp_info);
-
-        if (strcmp(ofp_info.status, "Success")) {
-            XPSetWidgetDescriptor(status_line, ofp_info.status);
-        } else if ((0 == strcmp(ofp_info.aircraft_icao, acf_file))
-                   || ((0 == strcmp(ofp_info.aircraft_icao, "A21N")) && (0 == strcmp(acf_file, "A321")))) {
-            time_t tg = atol(ofp_info.time_generated);
-            struct tm tm;
-#ifdef WINDOWS
-            gmtime_s(&tm, &tg);
-#else
-            gmtime_r(&tg, &tm);
-#endif
-            char line[100];
-            /* strftime does not work for whatever reasons */
-            sprintf(line, "OFP generated at %4d-%02d-%02d %02d:%02d:%02d UTC",
-                           tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
-                           tm.tm_hour, tm.tm_min, tm.tm_sec);
-
-            XPSetWidgetDescriptor(status_line, line);
-            ofp_info.valid = 1;
-            snprintf(ofp_info.altitude, sizeof(ofp_info.altitude), "%d", atoi(ofp_info.altitude) / 100);
-
-            if (flag_download_pdf)
-                download_pdf();
-
-            if (flag_download_fms)
-                download_fms();
-        } else {
-            char line[100];
-            sprintf(line, "OFP is not for %s", acf_file);
-            XPSetWidgetDescriptor(status_line, line);
-            memset(&ofp_info, 0, sizeof(ofp_info));
-        }
-
+        (void)fetch_ofp();
         return 1;
     }
 
@@ -645,11 +664,11 @@ XPluginReceiveMessage(XPLMPluginID in_from, long in_msg, void *in_param)
 
                 XPLMGetNthAircraftModel(XPLM_USER_AIRCRAFT, acf_file, path);
                 log_msg(acf_file);
- 
+
                 acf_file[4] = '\0';     /* be safe */
                 for (int i = 0; i < 4; i++)
                     acf_file[i] = toupper(acf_file[i]);
-                
+
                 if ((0 == strcmp(acf_file, "A319")) || (0 == strcmp(acf_file, "A321"))) {
                     XPLMGetSystemPath(path);
                     char *s = path + strlen(path);
