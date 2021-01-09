@@ -46,7 +46,7 @@ SOFTWARE.
 
 #define UNUSED(x) (void)(x)
 
-#define VERSION "1.00b6+"
+#define VERSION "1.00b7-dev"
 
 static char xpdir[512];
 static const char *psep;
@@ -75,14 +75,13 @@ static ofp_info_t ofp_info;
 
 static XPLMDataRef no_pax_dr, pax_distrib_dr, aft_cargo_dr, fwd_cargo_dr,
                    write_fob_dr, vr_enabled_dr;
-static XPLMCommandRef set_weight_cmdr;  // ToLiss commands
-static XPLMCommandRef open_cmdr;
+static XPLMCommandRef set_weight_cmdr;  /* ToLiss commands */
+static XPLMCommandRef fetch_cmdr, toggle_cmdr;
 
 static int dr_mapped;
 static int error_disabled;
 
 static char pref_path[512];
-static int tla3xx_detected;
 static char pilot_id[20];
 static int flag_download_fms, flag_download_pdf;
 static char pdf_download_dir[200];
@@ -288,7 +287,7 @@ conf_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intpt
     return 0;
 }
 
-// return success == 1
+/* return success == 1 */
 static int
 fetch_ofp(void)
 {
@@ -608,21 +607,42 @@ menu_cb(void *menu_ref, void *item_ref)
     }
 }
 
-// call back for open cmd
+/* call back for fetch cmd */
 static int
-open_cmd_cb(XPLMCommandRef cmdr, XPLMCommandPhase phase, void *ref)
+fetch_cmd_cb(XPLMCommandRef cmdr, XPLMCommandPhase phase, void *ref)
 {
     UNUSED(ref);
     if (xplm_CommandBegin != phase)
         return 0;
 
-    log_msg("open cmd called");
+    log_msg("fetch cmd called");
     create_widget();
     fetch_ofp();
     show_widget(&getofp_widget_ctx);
     return 0;
 }
 
+/* call back for toggle cmd */
+static int
+toggle_cmd_cb(XPLMCommandRef cmdr, XPLMCommandPhase phase, void *ref)
+{
+    UNUSED(ref);
+    if (xplm_CommandBegin != phase)
+        return 0;
+
+    log_msg("toggle cmd called");
+    create_widget();
+
+    if (XPIsWidgetVisible(getofp_widget_ctx.widget)) {
+        XPHideWidget(getofp_widget_ctx.widget);
+        return 0;
+    }
+    
+    show_widget(&getofp_widget_ctx);
+    return 0;
+}
+
+//* ------------------------------------------------------ API -------------------------------------------- */
 PLUGIN_API int
 XPluginStart(char *out_name, char *out_sig, char *out_desc)
 {
@@ -699,7 +719,6 @@ XPluginReceiveMessage(XPLMPluginID in_from, long in_msg, void *in_param)
                         return;
 
                     log_msg("Detected ToLiss A319/A321");
-                    tla3xx_detected = 1;
 
                     XPLMMenuID menu = XPLMFindPluginsMenu();
                     int sub_menu = XPLMAppendMenuItem(menu, "Simbrief Connector", NULL, 1);
@@ -707,8 +726,11 @@ XPluginReceiveMessage(XPLMPluginID in_from, long in_msg, void *in_param)
                     XPLMAppendMenuItem(tlsb_menu, "Configure", &conf_widget, 0);
                     XPLMAppendMenuItem(tlsb_menu, "Fetch OFP", &getofp_widget, 0);
 
-                    open_cmdr = XPLMCreateCommand("tlsb/open", "Open widget and fetch ofp data");
-                    XPLMRegisterCommandHandler(open_cmdr, open_cmd_cb, 0, NULL);
+                    fetch_cmdr = XPLMCreateCommand("tlsb/fetch", "Fetch ofp data and show in widget");
+                    XPLMRegisterCommandHandler(fetch_cmdr, fetch_cmd_cb, 0, NULL);
+
+                    toggle_cmdr = XPLMCreateCommand("tlsb/toggle", "Toggle simbrief connector widget");
+                    XPLMRegisterCommandHandler(toggle_cmdr, toggle_cmd_cb, 0, NULL);
                }
             }
         break;
