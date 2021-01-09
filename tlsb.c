@@ -1,7 +1,7 @@
 /*
 MIT License
 
-Copyright (c) 2019 Holger Teutsch
+Copyright (c) 2019, 2021 Holger Teutsch
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -75,7 +75,8 @@ static ofp_info_t ofp_info;
 
 static XPLMDataRef no_pax_dr, pax_distrib_dr, aft_cargo_dr, fwd_cargo_dr,
                    write_fob_dr, vr_enabled_dr;
-static XPLMCommandRef set_weight_cmdr;
+static XPLMCommandRef set_weight_cmdr;  // ToLiss commands
+static XPLMCommandRef open_cmdr;
 
 static int dr_mapped;
 static int error_disabled;
@@ -484,49 +485,54 @@ getofp_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, int
     return 0;
 }
 
+static void
+create_widget()
+{
+    if (getofp_widget)
+        return;
+
+    int left = 200;
+    int top = 800;
+    int width = 450;
+    int height = 300;
+
+    getofp_widget_ctx.l = left;
+    getofp_widget_ctx.t = top;
+    getofp_widget_ctx.w = width;
+    getofp_widget_ctx.h = height;
+
+    getofp_widget = XPCreateWidget(left, top, left + width, top - height,
+                                 0, "Toliss Simbrief Connector", 1, NULL, xpWidgetClass_MainWindow);
+    getofp_widget_ctx.widget = getofp_widget;
+
+    XPSetWidgetProperty(getofp_widget, xpProperty_MainWindowHasCloseBoxes, 1);
+    XPAddWidgetCallback(getofp_widget, getofp_widget_cb);
+    left += 5; top -= 25;
+
+    int left1 = left + 10;
+    getofp_btn = XPCreateWidget(left1, top, left1 + 60, top - 30,
+                              1, "Fetch OFP", 0, getofp_widget, xpWidgetClass_Button);
+    XPAddWidgetCallback(getofp_btn, getofp_widget_cb);
+
+    top -= 25;
+    status_line = XPCreateWidget(left1, top, left + width - 10, top - 20,
+                              1, "", 0, getofp_widget, xpWidgetClass_Caption);
+
+    top -= 20;
+    display_widget = XPCreateCustomWidget(left + 10, top, left + width -20, top - height + 10,
+                                           1, "", 0, getofp_widget, getofp_widget_cb);
+    top -= 50;
+    xfer_load_btn = XPCreateWidget(left + 10, top, left + 160, top - 30,
+                              1, "Xfer Load data to ISCS", 0, getofp_widget, xpWidgetClass_Button);
+    XPAddWidgetCallback(xfer_load_btn, getofp_widget_cb);
+}
 
 static void
 menu_cb(void *menu_ref, void *item_ref)
 {
     /* create gui */
     if (item_ref == &getofp_widget) {
-        if (NULL == getofp_widget) {
-            int left = 200;
-            int top = 800;
-            int width = 450;
-            int height = 300;
-
-            getofp_widget_ctx.l = left;
-            getofp_widget_ctx.t = top;
-            getofp_widget_ctx.w = width;
-            getofp_widget_ctx.h = height;
-
-            getofp_widget = XPCreateWidget(left, top, left + width, top - height,
-                                         0, "Toliss Simbrief Connector", 1, NULL, xpWidgetClass_MainWindow);
-            getofp_widget_ctx.widget = getofp_widget;
-
-            XPSetWidgetProperty(getofp_widget, xpProperty_MainWindowHasCloseBoxes, 1);
-            XPAddWidgetCallback(getofp_widget, getofp_widget_cb);
-            left += 5; top -= 25;
-
-            int left1 = left + 10;
-            getofp_btn = XPCreateWidget(left1, top, left1 + 60, top - 30,
-                                      1, "Fetch OFP", 0, getofp_widget, xpWidgetClass_Button);
-            XPAddWidgetCallback(getofp_btn, getofp_widget_cb);
-
-            top -= 25;
-            status_line = XPCreateWidget(left1, top, left + width - 10, top - 20,
-                                      1, "", 0, getofp_widget, xpWidgetClass_Caption);
-
-            top -= 20;
-            display_widget = XPCreateCustomWidget(left + 10, top, left + width -20, top - height + 10,
-                                                   1, "", 0, getofp_widget, getofp_widget_cb);
-            top -= 50;
-            xfer_load_btn = XPCreateWidget(left + 10, top, left + 160, top - 30,
-                                      1, "Xfer Load data to ISCS", 0, getofp_widget, xpWidgetClass_Button);
-            XPAddWidgetCallback(xfer_load_btn, getofp_widget_cb);
-        }
-
+        create_widget();
         show_widget(&getofp_widget_ctx);
         return;
     }
@@ -602,6 +608,20 @@ menu_cb(void *menu_ref, void *item_ref)
     }
 }
 
+// call back for open cmd
+static int
+open_cmd_cb(XPLMCommandRef cmdr, XPLMCommandPhase phase, void *ref)
+{
+    UNUSED(ref);
+    if (xplm_CommandBegin != phase)
+        return 0;
+
+    log_msg("open cmd called");
+    create_widget();
+    fetch_ofp();
+    show_widget(&getofp_widget_ctx);
+    return 0;
+}
 
 PLUGIN_API int
 XPluginStart(char *out_name, char *out_sig, char *out_desc)
@@ -686,6 +706,9 @@ XPluginReceiveMessage(XPLMPluginID in_from, long in_msg, void *in_param)
                     tlsb_menu = XPLMCreateMenu("Simbrief Connector", menu, sub_menu, menu_cb, NULL);
                     XPLMAppendMenuItem(tlsb_menu, "Configure", &conf_widget, 0);
                     XPLMAppendMenuItem(tlsb_menu, "Fetch OFP", &getofp_widget, 0);
+
+                    open_cmdr = XPLMCreateCommand("tlsb/open", "Open widget and fetch ofp data");
+                    XPLMRegisterCommandHandler(open_cmdr, open_cmd_cb, 0, NULL);
                }
             }
         break;
