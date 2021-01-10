@@ -74,8 +74,9 @@ static widget_ctx_t getofp_widget_ctx, conf_widget_ctx;
 static ofp_info_t ofp_info;
 
 static XPLMDataRef no_pax_dr, pax_distrib_dr, aft_cargo_dr, fwd_cargo_dr,
-                   write_fob_dr, vr_enabled_dr;
-static XPLMCommandRef set_weight_cmdr;  /* ToLiss commands */
+                   write_fob_dr, vr_enabled_dr,
+                   popup_height_dr;
+static XPLMCommandRef set_weight_cmdr, iscs_cmdr;  /* ToLiss commands */
 static XPLMCommandRef fetch_cmdr, toggle_cmdr;
 
 static int dr_mapped;
@@ -106,7 +107,11 @@ map_datarefs()
     if (NULL == (aft_cargo_dr = XPLMFindDataRef("AirbusFBW/AftCargo")))goto err;
     if (NULL == (fwd_cargo_dr = XPLMFindDataRef("AirbusFBW/FwdCargo"))) goto err;
     if (NULL == (write_fob_dr = XPLMFindDataRef("AirbusFBW/WriteFOB"))) goto err;
+    if (NULL == (popup_height_dr = XPLMFindDataRef("AirbusFBW/PopUpHeightArray"))) goto err;
+
     if (NULL == (set_weight_cmdr = XPLMFindCommand("AirbusFBW/SetWeightAndCG"))) goto err;
+    if (NULL == (iscs_cmdr = XPLMFindCommand("toliss_airbus/iscs_open"))) goto err;
+
     return;
 
 err:
@@ -125,6 +130,7 @@ xfer_load_data()
         return;
 
     log_msg("Xfer load data to ISCS");
+
     XPLMSetDatai(no_pax_dr, atoi(ofp_info.pax_count));
     XPLMSetDataf(pax_distrib_dr, 0.5);
     XPLMSetDataf(write_fob_dr, atof(ofp_info.fuel_plan_ramp));
@@ -132,6 +138,16 @@ xfer_load_data()
     XPLMSetDataf(fwd_cargo_dr, cargo);
     XPLMSetDataf(aft_cargo_dr, cargo);
     XPLMCommandOnce(set_weight_cmdr);
+
+    /* if the iscs is open togle it twice to refresh data */
+    int iscs_h;
+    if (1 == XPLMGetDatavi(popup_height_dr, &iscs_h, 9, 1)) {
+        if (iscs_h > 0) {
+            log_msg("ISCS is open");
+            XPLMCommandOnce(iscs_cmdr);
+            /* XPLMCommandOnce(iscs_cmdr); that does not work. I assume a flight loop cb must be used */
+        }
+    }
 }
 
 static void
@@ -637,7 +653,7 @@ toggle_cmd_cb(XPLMCommandRef cmdr, XPLMCommandPhase phase, void *ref)
         XPHideWidget(getofp_widget_ctx.widget);
         return 0;
     }
-    
+
     show_widget(&getofp_widget_ctx);
     return 0;
 }
