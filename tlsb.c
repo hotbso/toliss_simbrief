@@ -48,6 +48,8 @@ SOFTWARE.
 
 #define VERSION "1.00b7"
 
+static float flight_loop_cb(float unused1, float unused2, int unused3, void *unused4);
+
 static char xpdir[512];
 static const char *psep;
 static char fms_path[512];
@@ -78,6 +80,14 @@ static XPLMDataRef no_pax_dr, pax_distrib_dr, aft_cargo_dr, fwd_cargo_dr,
                    popup_height_dr;
 static XPLMCommandRef set_weight_cmdr, iscs_cmdr;  /* ToLiss commands */
 static XPLMCommandRef fetch_cmdr, toggle_cmdr, fetch_xfer_cmdr;
+
+static XPLMCreateFlightLoop_t create_flight_loop =
+{
+    .structSize = sizeof(XPLMCreateFlightLoop_t),
+    .phase = xplm_FlightLoop_Phase_BeforeFlightModel,
+    .callbackFunc = flight_loop_cb
+};
+static XPLMFlightLoopID flight_loop_id;
 
 static int dr_mapped;
 static int error_disabled;
@@ -145,7 +155,7 @@ xfer_load_data()
         if (iscs_h > 0) {
             log_msg("ISCS is open");
             XPLMCommandOnce(iscs_cmdr);
-            /* XPLMCommandOnce(iscs_cmdr); that does not work. I assume a flight loop cb must be used */
+            XPLMScheduleFlightLoop(flight_loop_id, 0.2, 1);     /* delayed toggle */
         }
     }
 }
@@ -679,6 +689,15 @@ toggle_cmd_cb(XPLMCommandRef cmdr, XPLMCommandPhase phase, void *ref)
     return 0;
 }
 
+/* flight loop for delayed actions */
+static float
+flight_loop_cb(float unused1, float unused2, int unused3, void *unused4)
+{
+    log_msg("flight loop: toggle iscs");
+    XPLMCommandOnce(iscs_cmdr);
+    return 0; /* unschedule */
+}
+
 //* ------------------------------------------------------ API -------------------------------------------- */
 PLUGIN_API int
 XPluginStart(char *out_name, char *out_sig, char *out_desc)
@@ -772,6 +791,7 @@ XPluginReceiveMessage(XPLMPluginID in_from, long in_msg, void *in_param)
                     fetch_xfer_cmdr = XPLMCreateCommand("tlsb/fetch_xfer", "Fetch ofp data and xfer load data");
                     XPLMRegisterCommandHandler(fetch_xfer_cmdr, fetch_xfer_cmd_cb, 0, NULL);
 
+                    flight_loop_id = XPLMCreateFlightLoop(&create_flight_loop);
                }
             }
         break;
