@@ -46,7 +46,7 @@ SOFTWARE.
 
 #define UNUSED(x) (void)(x)
 
-#define VERSION "1.00b7-dev"
+#define VERSION "1.00b7"
 
 static char xpdir[512];
 static const char *psep;
@@ -77,7 +77,7 @@ static XPLMDataRef no_pax_dr, pax_distrib_dr, aft_cargo_dr, fwd_cargo_dr,
                    write_fob_dr, vr_enabled_dr,
                    popup_height_dr;
 static XPLMCommandRef set_weight_cmdr, iscs_cmdr;  /* ToLiss commands */
-static XPLMCommandRef fetch_cmdr, toggle_cmdr;
+static XPLMCommandRef fetch_cmdr, toggle_cmdr, fetch_xfer_cmdr;
 
 static int dr_mapped;
 static int error_disabled;
@@ -638,6 +638,27 @@ fetch_cmd_cb(XPLMCommandRef cmdr, XPLMCommandPhase phase, void *ref)
     return 0;
 }
 
+/* call back for fetch_xfer cmd */
+static int
+fetch_xfer_cmd_cb(XPLMCommandRef cmdr, XPLMCommandPhase phase, void *ref)
+{
+    UNUSED(ref);
+    if (xplm_CommandBegin != phase)
+        return 0;
+
+    log_msg("fetch_xfer cmd called");
+
+    if (0 == fetch_ofp()) {
+        /* error, show widget */
+        create_widget();
+        show_widget(&getofp_widget_ctx);
+        return 0;
+    }
+
+    xfer_load_data();
+    return 0;
+}
+
 /* call back for toggle cmd */
 static int
 toggle_cmd_cb(XPLMCommandRef cmdr, XPLMCommandPhase phase, void *ref)
@@ -742,11 +763,15 @@ XPluginReceiveMessage(XPLMPluginID in_from, long in_msg, void *in_param)
                     XPLMAppendMenuItem(tlsb_menu, "Configure", &conf_widget, 0);
                     XPLMAppendMenuItem(tlsb_menu, "Fetch OFP", &getofp_widget, 0);
 
+                    toggle_cmdr = XPLMCreateCommand("tlsb/toggle", "Toggle simbrief connector widget");
+                    XPLMRegisterCommandHandler(toggle_cmdr, toggle_cmd_cb, 0, NULL);
+
                     fetch_cmdr = XPLMCreateCommand("tlsb/fetch", "Fetch ofp data and show in widget");
                     XPLMRegisterCommandHandler(fetch_cmdr, fetch_cmd_cb, 0, NULL);
 
-                    toggle_cmdr = XPLMCreateCommand("tlsb/toggle", "Toggle simbrief connector widget");
-                    XPLMRegisterCommandHandler(toggle_cmdr, toggle_cmd_cb, 0, NULL);
+                    fetch_xfer_cmdr = XPLMCreateCommand("tlsb/fetch_xfer", "Fetch ofp data and xfer load data");
+                    XPLMRegisterCommandHandler(fetch_xfer_cmdr, fetch_xfer_cmd_cb, 0, NULL);
+
                }
             }
         break;
