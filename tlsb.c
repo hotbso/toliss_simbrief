@@ -46,7 +46,7 @@ SOFTWARE.
 
 #define UNUSED(x) (void)(x)
 
-#define VERSION "1.00b7"
+#define VERSION "1.00b7-debug_1"
 
 static float flight_loop_cb(float unused1, float unused2, int unused3, void *unused4);
 
@@ -258,6 +258,12 @@ show_widget(widget_ctx_t *ctx)
 {
     if (XPIsWidgetVisible(ctx->widget))
         return;
+
+    int xl, yl, xr, yr;
+    XPLMGetScreenBoundsGlobal(&xl, &yr, &xr, &yl);
+
+    log_msg("show_widget: s: (%d, %d) -> (%d, %d), w: (%d, %d) -> (%d,%d)",
+           xl, yl, xr, yr, ctx->l, ctx->t, ctx->l + ctx->w, ctx->t - ctx->h);
 
     XPShowWidget(ctx->widget);
 
