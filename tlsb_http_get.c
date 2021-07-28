@@ -31,7 +31,7 @@ SOFTWARE.
 
 #include "tlsb.h"
 
-int tlsb_http_get(const char *url, FILE *f, int *ret_len)
+int tlsb_http_get(const char *url, FILE *f, int *ret_len, int timeout)
 {
     DWORD dwSize = 0;
     DWORD dwDownloaded = 0;
@@ -54,10 +54,10 @@ int tlsb_http_get(const char *url, FILE *f, int *ret_len)
     URL_COMPONENTS urlComp;
     memset(&urlComp, 0, sizeof(urlComp));
     urlComp.dwStructSize = sizeof(urlComp);
-    
+
     urlComp.lpszHostName = host_wc;
     urlComp.dwHostNameLength  = (DWORD)(url_len + 1);
-    
+
     urlComp.lpszUrlPath = path_wc;
     urlComp.dwUrlPathLength   = (DWORD)(url_len + 1);
 
@@ -80,11 +80,12 @@ int tlsb_http_get(const char *url, FILE *f, int *ret_len)
         goto error_out;
     }
 
-    if (! WinHttpSetTimeouts(hSession, 5000, 5000, 5000, 5000)) {
+    timeout *= 1000;
+    if (! WinHttpSetTimeouts(hSession, timeout, timeout, timeout, timeout)) {
         log_msg("can't set timeouts");
         goto error_out;
     }
-    
+
     hConnect = WinHttpConnect(hSession, host_wc, urlComp.nPort, 0);
     if (NULL == hConnect) {
         log_msg("Can't open HTTP session");
@@ -126,17 +127,19 @@ int tlsb_http_get(const char *url, FILE *f, int *ret_len)
 
         while (dwSize > 0) {
             int get_len = (dwSize < sizeof(buffer) ? dwSize : sizeof(buffer));
-            
+
             bResults = WinHttpReadData(hRequest, buffer, get_len, &dwDownloaded);
             if (! bResults){
                log_msg("Error %u in WinHttpReadData.", GetLastError());
                goto error_out;
             }
 
-            fwrite(buffer, 1, dwDownloaded, f);
-            if (ferror(f)) {
-                log_msg("error wrinting file");
-                goto error_out;
+            if (NULL != f) {
+                fwrite(buffer, 1, dwDownloaded, f);
+                if (ferror(f)) {
+                    log_msg("error wrinting file");
+                    goto error_out;
+                }
             }
 
             dwSize -= dwDownloaded;
@@ -152,5 +155,7 @@ error_out:
     if (hRequest) WinHttpCloseHandle(hRequest);
     if (hConnect) WinHttpCloseHandle(hConnect);
     if (hSession) WinHttpCloseHandle(hSession);
+
+    log_msg("tlsb_http_get result: %d", result);
     return result;
 }

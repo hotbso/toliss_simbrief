@@ -106,7 +106,7 @@ tlsb_ofp_get_parse(const char *pilot_id, ofp_info_t *ofp_info)
 {
     char *ofp = NULL;
     FILE *f = NULL;
-    
+
     memset(ofp_info, 0, sizeof(*ofp_info));
     int ofp_len;
 
@@ -116,13 +116,13 @@ tlsb_ofp_get_parse(const char *pilot_id, ofp_info_t *ofp_info)
 
     f = fopen(tlsb_tmp_fn, "wb+");
     // is unrealiable on windows FILE *f = tmpfile();
- 
+
     if (NULL == f) {
         log_msg("Can't create temporary file");
         return 0;
     }
 
-    int res = tlsb_http_get(url, f, &ofp_len);
+    int res = tlsb_http_get(url, f, &ofp_len, 10);
 
     if (0 == res) {
         strcpy(ofp_info->status, "Network error");
@@ -189,7 +189,7 @@ tlsb_ofp_get_parse(const char *pilot_id, ofp_info_t *ofp_info)
     if (POSITION("times")) {
         EXTRACT("est_time_enroute", est_time_enroute);
     }
-    
+
     if (POSITION("fms_downloads")) {
         EXTRACT("directory", sb_path);
     }

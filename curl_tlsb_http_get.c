@@ -28,7 +28,13 @@ SOFTWARE.
 
 #include "tlsb.h"
 
-int tlsb_http_get(const char *url, FILE *f, int *ret_len)
+
+static size_t discard_write_cb(char *ptr, size_t size, size_t nmemb, void *userdata)
+{
+    return size * nmemb;
+}
+
+int tlsb_http_get(const char *url, FILE *f, int *ret_len, int timeout)
 {
   CURL *curl;
   CURLcode res;
@@ -36,15 +42,16 @@ int tlsb_http_get(const char *url, FILE *f, int *ret_len)
   curl = curl_easy_init();
   if(!curl) return 0;
   curl_easy_setopt(curl, CURLOPT_URL, url);
-  curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);
-  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, fwrite);
+  curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout);
+  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, (NULL != f) ? fwrite : discard_write_cb);
   curl_easy_setopt(curl, CURLOPT_WRITEDATA, f);
+
   curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
   curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
   res = curl_easy_perform(curl);
     /* Check for errors */
   if(res != CURLE_OK) {
-      fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+      log_msg("curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
       return 0;
   }
   double dl;

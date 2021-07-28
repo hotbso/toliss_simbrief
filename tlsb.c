@@ -99,8 +99,7 @@ static int flag_download_fms, flag_download_pdf, flag_upload_aspx;
 static char pdf_download_dir[200];
 static char acf_file[256];
 
-static char msg_line_1[100];
-static char msg_line_2[100];
+static char msg_line_1[100], msg_line_2[100], msg_line_3[100];
 
 
 static void
@@ -197,6 +196,7 @@ load_pref()
 
     if (EOF == (c = fgetc(f))) goto out;
     flag_download_fms = (c == '1' ? 1 : 0);
+    fgetc(f); /* skip over \n */
 
     if (EOF == (c = fgetc(f))) goto out;
     flag_upload_aspx = (c == '1' ? 1 : 0);
@@ -220,7 +220,7 @@ download_pdf()
         goto err_out;
     }
 
-    if (0 == tlsb_http_get(URL, f, NULL)) {
+    if (0 == tlsb_http_get(URL, f, NULL, 10)) {
         log_msg("Can't download '%s'", URL);
         goto err_out;
     }
@@ -246,12 +246,25 @@ download_fms()
         goto err_out;
     }
 
-    if (0 == tlsb_http_get(URL, f, NULL)) {
+    if (0 == tlsb_http_get(URL, f, NULL, 10)) {
         log_msg("Can't download '%s'", URL);
         goto err_out;
     }
 
     snprintf(msg_line_2, sizeof(msg_line_2), "FMS plan: '%s%s19'", ofp_info.origin, ofp_info.destination);
+
+    if (flag_upload_aspx) {
+        snprintf(URL, sizeof(URL), "http://localhost:19285/ActiveSky/API/LoadFlightPlan?FileName=%s%s19.fms",
+                                   ofp_info.origin, ofp_info.destination);
+        log_msg("URL '%s'", URL);
+
+        if (0 == tlsb_http_get(URL, NULL, NULL, 2)) {
+            log_msg("Can't upload to ASPX '%s'", URL);
+            strcpy(msg_line_3, "Could not upload flightplan to ASPX");
+        } else {
+            strcpy(msg_line_3, "Flightplan uploaded to ASPX");
+        }
+    }
 
   err_out:
     if (f) fclose(f);
@@ -318,6 +331,7 @@ conf_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intpt
         XPGetWidgetDescriptor(conf_downl_pdf_path, pdf_download_dir, sizeof(pdf_download_dir));
         flag_download_pdf = XPGetWidgetProperty(conf_downl_pdf_btn, xpProperty_ButtonState, NULL);
         flag_download_fms = XPGetWidgetProperty(conf_downl_fpl_btn, xpProperty_ButtonState, NULL);
+        flag_upload_aspx = XPGetWidgetProperty(conf_upl_aspx_btn, xpProperty_ButtonState, NULL);
         save_pref();
         XPHideWidget(conf_widget);
         return 1;
@@ -338,8 +352,7 @@ conf_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intpt
 static int
 fetch_ofp(void)
 {
-    msg_line_1[0] = '\0';
-    msg_line_2[0] = '\0';
+    msg_line_1[0] = msg_line_2[0] = msg_line_3[0] = '\0';
 
     ofp_info.valid = 0;
 
@@ -501,6 +514,11 @@ getofp_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, int
         if (msg_line_2[0]) {
             y -= 15;
             XPLMDrawString(bg_color, left_col, y, msg_line_2, NULL, xplmFont_Proportional);
+        }
+
+        if (msg_line_3[0]) {
+            y -= 15;
+            XPLMDrawString(bg_color, left_col, y, msg_line_3, NULL, xplmFont_Proportional);
         }
 
         /* adjust height of window */
