@@ -46,7 +46,7 @@ SOFTWARE.
 
 #define UNUSED(x) (void)(x)
 
-#define VERSION "1.00b7-debug_1"
+#define VERSION "1.00b8"
 
 static float flight_loop_cb(float unused1, float unused2, int unused3, void *unused4);
 
@@ -62,7 +62,8 @@ static XPLMMenuID tlsb_menu;
 static XPWidgetID getofp_widget, display_widget, getofp_btn,
                   status_line, xfer_load_btn;
 static XPWidgetID conf_widget, pilot_id_input, conf_ok_btn,
-                  conf_downl_pdf_btn, conf_downl_pdf_path, conf_downl_pdf_paste_btn, conf_downl_fpl_btn;
+                  conf_downl_pdf_btn, conf_downl_pdf_path, conf_downl_pdf_paste_btn, conf_downl_fpl_btn,
+                  conf_upl_aspx_btn;
 
 typedef struct _widget_ctx
 {
@@ -94,7 +95,7 @@ static int error_disabled;
 
 static char pref_path[512];
 static char pilot_id[20];
-static int flag_download_fms, flag_download_pdf;
+static int flag_download_fms, flag_download_pdf, flag_upload_aspx;
 static char pdf_download_dir[200];
 static char acf_file[256];
 
@@ -170,6 +171,7 @@ save_pref()
     fputs(pilot_id, f); putc('\n', f);
     putc((flag_download_pdf ? '1' : '0'), f); fputs(pdf_download_dir, f); putc('\n', f);
     putc((flag_download_fms ? '1' : '0'), f); putc('\n', f);
+    putc((flag_upload_aspx ? '1' : '0'), f); putc('\n', f);
     fclose(f);
 }
 
@@ -195,6 +197,9 @@ load_pref()
 
     if (EOF == (c = fgetc(f))) goto out;
     flag_download_fms = (c == '1' ? 1 : 0);
+
+    if (EOF == (c = fgetc(f))) goto out;
+    flag_upload_aspx = (c == '1' ? 1 : 0);
 
   out:
     fclose(f);
@@ -259,12 +264,22 @@ show_widget(widget_ctx_t *ctx)
     if (XPIsWidgetVisible(ctx->widget))
         return;
 
+    /* force window into visible area of screen
+       we use modern windows under the hut so UI coordinates are in boxels */
+
     int xl, yl, xr, yr;
     XPLMGetScreenBoundsGlobal(&xl, &yr, &xr, &yl);
+
+    ctx->l = (ctx->l + ctx->w < xr) ? ctx->l : xr - ctx->w - 50;
+    ctx->l = (ctx->l <= xl) ? 20 : ctx->l;
+
+    ctx->t = (ctx->t + ctx->h < yr) ? ctx->t : (yr - ctx->h - 50);
+    ctx->t = (ctx->t >= ctx->h) ? ctx->t : (yr / 2);
 
     log_msg("show_widget: s: (%d, %d) -> (%d, %d), w: (%d, %d) -> (%d,%d)",
            xl, yl, xr, yr, ctx->l, ctx->t, ctx->l + ctx->w, ctx->t - ctx->h);
 
+    XPSetWidgetGeometry(ctx->widget, ctx->l, ctx->t, ctx->l + ctx->w, ctx->t - ctx->h);
     XPShowWidget(ctx->widget);
 
     int in_vr = (NULL != vr_enabled_dr) && XPLMGetDatai(vr_enabled_dr);
@@ -573,7 +588,7 @@ menu_cb(void *menu_ref, void *item_ref)
             int left = 250;
             int top = 780;
             int width = 500;
-            int height = 180;
+            int height = 220;
 
             conf_widget_ctx.l = left;
             conf_widget_ctx.t = top;
@@ -624,6 +639,15 @@ menu_cb(void *menu_ref, void *item_ref)
             XPSetWidgetProperty(conf_downl_fpl_btn, xpProperty_ButtonType, xpRadioButton);
             XPSetWidgetProperty(conf_downl_fpl_btn, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox);
 
+            top -= 20;
+            XPCreateWidget(left, top, left + width - 10, top - 20,
+                                      1, "Upload Flightplan to ASXP", 0, conf_widget, xpWidgetClass_Caption);
+            top -= 20;
+            conf_upl_aspx_btn = XPCreateWidget(left, top, left + 20, top - 20,
+                                      1, "", 0, conf_widget, xpWidgetClass_Button);
+            XPSetWidgetProperty(conf_upl_aspx_btn, xpProperty_ButtonType, xpRadioButton);
+            XPSetWidgetProperty(conf_upl_aspx_btn, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox);
+
             top -= 30;
             conf_ok_btn = XPCreateWidget(left + 10, top, left + 140, top - 30,
                                       1, "OK", 0, conf_widget, xpWidgetClass_Button);
@@ -634,6 +658,7 @@ menu_cb(void *menu_ref, void *item_ref)
         XPSetWidgetDescriptor(conf_downl_pdf_path, pdf_download_dir);
         XPSetWidgetProperty(conf_downl_pdf_btn, xpProperty_ButtonState, flag_download_pdf);
         XPSetWidgetProperty(conf_downl_fpl_btn, xpProperty_ButtonState, flag_download_fms);
+        XPSetWidgetProperty(conf_upl_aspx_btn, xpProperty_ButtonState, flag_upload_aspx);
         show_widget(&conf_widget_ctx);
         return;
     }
@@ -708,6 +733,8 @@ flight_loop_cb(float unused1, float unused2, int unused3, void *unused4)
 PLUGIN_API int
 XPluginStart(char *out_name, char *out_sig, char *out_desc)
 {
+    log_msg("startup " VERSION);
+
     /* Always use Unix-native paths on the Mac! */
     XPLMEnableFeature("XPLM_USE_NATIVE_PATHS", 1);
     XPLMEnableFeature("XPLM_USE_NATIVE_WIDGET_WINDOWS", 1);
