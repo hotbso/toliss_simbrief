@@ -62,8 +62,11 @@ static XPLMMenuID tlsb_menu;
 static XPWidgetID getofp_widget, display_widget, getofp_btn,
                   status_line, xfer_load_btn;
 static XPWidgetID conf_widget, pilot_id_input, conf_ok_btn,
-                  conf_downl_pdf_btn, conf_downl_pdf_path, conf_downl_pdf_paste_btn, conf_downl_fpl_btn,
-                  conf_upl_aspx_btn;
+                  conf_downl_pdf_btn, conf_downl_pdf_path, conf_downl_pdf_paste_btn, conf_downl_fpl_btn;
+
+#ifdef UPLOAD_ASPX
+static XPWidgetID conf_upl_aspx_btn;
+#endif
 
 typedef struct _widget_ctx
 {
@@ -199,9 +202,13 @@ load_pref()
     fgetc(f); /* skip over \n */
 
     if (EOF == (c = fgetc(f))) goto out;
+#ifdef UPLOAD_ASPX
     flag_upload_aspx = (c == '1' ? 1 : 0);
-
+#else
+    flag_upload_aspx = 0;
+#endif
   out:
+    flag_upload_aspx &= flag_download_fms;
     fclose(f);
 }
 
@@ -253,6 +260,7 @@ download_fms()
 
     snprintf(msg_line_2, sizeof(msg_line_2), "FMS plan: '%s%s19'", ofp_info.origin, ofp_info.destination);
 
+#ifdef UPLOAD_ASPX
     if (flag_upload_aspx) {
         snprintf(URL, sizeof(URL), "http://localhost:19285/ActiveSky/API/LoadFlightPlan?FileName=%s%s19.fms",
                                    ofp_info.origin, ofp_info.destination);
@@ -265,6 +273,7 @@ download_fms()
             strcpy(msg_line_3, "Flightplan uploaded to ASPX");
         }
     }
+#endif
 
   err_out:
     if (f) fclose(f);
@@ -331,7 +340,10 @@ conf_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intpt
         XPGetWidgetDescriptor(conf_downl_pdf_path, pdf_download_dir, sizeof(pdf_download_dir));
         flag_download_pdf = XPGetWidgetProperty(conf_downl_pdf_btn, xpProperty_ButtonState, NULL);
         flag_download_fms = XPGetWidgetProperty(conf_downl_fpl_btn, xpProperty_ButtonState, NULL);
+#ifdef UPLOAD_ASPX
         flag_upload_aspx = XPGetWidgetProperty(conf_upl_aspx_btn, xpProperty_ButtonState, NULL);
+        flag_upload_aspx &= flag_download_fms;
+#endif
         save_pref();
         XPHideWidget(conf_widget);
         return 1;
@@ -606,8 +618,12 @@ menu_cb(void *menu_ref, void *item_ref)
             int left = 250;
             int top = 780;
             int width = 500;
+#ifdef UPLOAD_ASPX
             int height = 220;
-
+#else
+             int height = 180;
+#endif
+   
             conf_widget_ctx.l = left;
             conf_widget_ctx.t = top;
             conf_widget_ctx.w = width;
@@ -657,6 +673,7 @@ menu_cb(void *menu_ref, void *item_ref)
             XPSetWidgetProperty(conf_downl_fpl_btn, xpProperty_ButtonType, xpRadioButton);
             XPSetWidgetProperty(conf_downl_fpl_btn, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox);
 
+#ifdef UPLOAD_ASPX
             top -= 20;
             XPCreateWidget(left, top, left + width - 10, top - 20,
                                       1, "Upload Flightplan to ASXP", 0, conf_widget, xpWidgetClass_Caption);
@@ -665,6 +682,7 @@ menu_cb(void *menu_ref, void *item_ref)
                                       1, "", 0, conf_widget, xpWidgetClass_Button);
             XPSetWidgetProperty(conf_upl_aspx_btn, xpProperty_ButtonType, xpRadioButton);
             XPSetWidgetProperty(conf_upl_aspx_btn, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox);
+#endif
 
             top -= 30;
             conf_ok_btn = XPCreateWidget(left + 10, top, left + 140, top - 30,
@@ -676,7 +694,11 @@ menu_cb(void *menu_ref, void *item_ref)
         XPSetWidgetDescriptor(conf_downl_pdf_path, pdf_download_dir);
         XPSetWidgetProperty(conf_downl_pdf_btn, xpProperty_ButtonState, flag_download_pdf);
         XPSetWidgetProperty(conf_downl_fpl_btn, xpProperty_ButtonState, flag_download_fms);
+
+#ifdef UPLOAD_ASPX
         XPSetWidgetProperty(conf_upl_aspx_btn, xpProperty_ButtonState, flag_upload_aspx);
+#endif
+
         show_widget(&conf_widget_ctx);
         return;
     }
