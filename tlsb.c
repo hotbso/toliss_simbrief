@@ -411,6 +411,40 @@ fetch_ofp(void)
 }
 
 static int
+format_route(float *bg_color, char *rptr, int right_col, int y)
+{
+    /* break route to this # of chars */
+#define ROUTE_BRK 50
+    while (1) {
+        int len = strlen(rptr);
+        if (len <= ROUTE_BRK)
+            break;
+
+        /* find last blank < line length */
+        char c = rptr[ROUTE_BRK];
+        rptr[ROUTE_BRK] = '\0';
+        char *cptr = strrchr(rptr, ' ');
+        rptr[ROUTE_BRK] = c;
+
+        if (NULL == cptr) {
+            log_msg("Can't format route!");
+            break;
+        }
+
+        /* write that fragment */
+        c = *cptr;
+        *cptr = '\0';
+        XPLMDrawString(bg_color, right_col, y, rptr, NULL, xplmFont_Basic);
+        y -= 15;
+        *cptr = c;
+        rptr = cptr + 1;    /* behind the blank */
+    }
+
+    XPLMDrawString(bg_color, right_col, y, rptr, NULL, xplmFont_Basic);
+    return y;
+}
+
+static int
 getofp_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, intptr_t param2)
 {
     if (msg == xpMessage_CloseButtonPushed) {
@@ -476,36 +510,7 @@ getofp_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, int
         DL("Destination"); DF(right_col, destination); DF(right_col + 50, destination_rwy);
         DL("Route:");
 
-        /* break route to this # of chars */
-#define ROUTE_BRK 50
-        char *rptr = ofp_info.route;
-        while (1) {
-            int len = strlen(rptr);
-            if (len <= ROUTE_BRK)
-                break;
-
-            /* find last blank < line length */
-            char c = rptr[ROUTE_BRK];
-            rptr[ROUTE_BRK] = '\0';
-            char *cptr = strrchr(rptr, ' ');
-            rptr[ROUTE_BRK] = c;
-
-            if (NULL == cptr) {
-                log_msg("Can't format route!");
-                break;
-            }
-
-            /* write that fragment */
-            c = *cptr;
-            *cptr = '\0';
-            XPLMDrawString(bg_color, right_col, y, rptr, NULL, xplmFont_Basic);
-            y -= 15;
-            *cptr = c;
-            rptr = cptr + 1;    /* behind the blank */
-        }
-
-        XPLMDrawString(bg_color, right_col, y, rptr, NULL, xplmFont_Basic);
-
+        y = format_route(bg_color, ofp_info.route, right_col, y);
 
         DL("Trip time");
         if (ofp_info.est_time_enroute[0]) {
@@ -517,6 +522,12 @@ getofp_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, int
 
         DL("CI"); DF(right_col, ci);
         DL("CRZ FL:"); DF(right_col, altitude);
+        y -= 5;
+
+        DL("Alternate:"); DF(right_col, alternate);
+        DL("Alt Route:");
+        y = format_route(bg_color, ofp_info.alt_route, right_col, y);
+        y -= 5;
 
         if (msg_line_1[0]) {
             y -= 15;
