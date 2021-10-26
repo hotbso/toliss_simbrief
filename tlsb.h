@@ -35,6 +35,7 @@ typedef struct _ofp_info
     char origin[10];
     char origin_rwy[6];
     char destination[10];
+    char alternate[10];
     char destination_rwy[10];
     char ci[10];
     char altitude[10];
@@ -43,6 +44,7 @@ typedef struct _ofp_info
     char cargo[10];
     char payload[10];
     char route[1000];
+    char alt_route[1000];
     char sb_path[200];
     char sb_pdf_link[80];
     char sb_fms_link[80];

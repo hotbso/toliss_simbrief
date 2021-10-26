@@ -45,7 +45,10 @@ tlsb_dump_ofp_info(ofp_info_t *ofp_info)
         L(aircraft_icao);
         L(origin);
         L(destination);
+        L(alternate);
         L(ci);
+        L(route);
+        L(alt_route);
         L(max_passengers);
         L(fuel_plan_ramp);
         L(oew);
@@ -179,7 +182,12 @@ tlsb_ofp_get_parse(const char *pilot_id, ofp_info_t *ofp_info)
         EXTRACT("route", route);
     }
 
-    if (POSITION("weights")) {
+     if (POSITION("alternate")) {
+        EXTRACT("icao_code", alternate);
+        EXTRACT("route", alt_route);
+    }
+
+   if (POSITION("weights")) {
         EXTRACT("oew", oew);
         EXTRACT("pax_count", pax_count);
         EXTRACT("cargo", cargo);
