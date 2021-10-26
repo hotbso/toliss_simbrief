@@ -46,7 +46,7 @@ SOFTWARE.
 
 #define UNUSED(x) (void)(x)
 
-#define VERSION "1.00b8"
+#define VERSION "1.00b9-dev"
 
 static float flight_loop_cb(float unused1, float unused2, int unused3, void *unused4);
 
@@ -81,7 +81,8 @@ static ofp_info_t ofp_info;
 
 static XPLMDataRef no_pax_dr, pax_distrib_dr, aft_cargo_dr, fwd_cargo_dr,
                    write_fob_dr, vr_enabled_dr,
-                   popup_height_dr;
+                   popup_height_dr,
+                   acf_icao_dr;
 static XPLMCommandRef set_weight_cmdr, iscs_cmdr;  /* ToLiss commands */
 static XPLMCommandRef fetch_cmdr, toggle_cmdr, fetch_xfer_cmdr;
 
@@ -101,7 +102,7 @@ static char pilot_id[20];
 static int flag_download_fms, flag_download_pdf, flag_upload_aspx;
 static char pdf_download_dir[200];
 static char acf_file[256];
-
+static char acf_icao[41];
 static char msg_line_1[100], msg_line_2[100], msg_line_3[100];
 
 
@@ -112,8 +113,6 @@ map_datarefs()
         return;
 
     dr_mapped = 1;
-
-    vr_enabled_dr = XPLMFindDataRef("sim/graphics/VR/enabled");
 
     if (NULL == (no_pax_dr = XPLMFindDataRef("AirbusFBW/NoPax"))) goto err;
     if (NULL == (pax_distrib_dr = XPLMFindDataRef("AirbusFBW/PaxDistrib"))) goto err;
@@ -376,8 +375,7 @@ fetch_ofp(void)
         return 0; // error
     }
 
-    if ((0 == strcmp(ofp_info.aircraft_icao, acf_file))
-        || ((0 == strcmp(ofp_info.aircraft_icao, "A21N")) && (0 == strcmp(acf_file, "A321")))) {
+    if (0 == strcmp(ofp_info.aircraft_icao, acf_icao)) {
         time_t tg = atol(ofp_info.time_generated);
         struct tm tm;
     #ifdef WINDOWS
@@ -623,7 +621,7 @@ menu_cb(void *menu_ref, void *item_ref)
 #else
              int height = 180;
 #endif
-   
+
             conf_widget_ctx.l = left;
             conf_widget_ctx.t = top;
             conf_widget_ctx.w = width;
@@ -781,7 +779,7 @@ XPluginStart(char *out_name, char *out_sig, char *out_desc)
 
     strcpy(out_name, "toliss_simbrief " VERSION);
     strcpy(out_sig, "tlsb-hotbso");
-    strcpy(out_desc, "A plugin that connects simbrief to the ToLiss A319/A321");
+    strcpy(out_desc, "A plugin that connects simbrief to the ToLiss A319/A321/A340");
 
     psep = XPLMGetDirectorySeparator();
     XPLMGetSystemPath(xpdir);
@@ -790,6 +788,10 @@ XPluginStart(char *out_name, char *out_sig, char *out_desc)
 
     snprintf(tlsb_tmp_fn, sizeof(tlsb_tmp_fn), "%s%sOutput%stlsb_download.tmp",
              xpdir, psep, psep);
+
+    /* map standard datarefs, acf datarefs are delayed */
+    vr_enabled_dr = XPLMFindDataRef("sim/graphics/VR/enabled");
+    acf_icao_dr = XPLMFindDataRef("sim/aircraft/view/acf_ICAO");
 
     /* load preferences */
     XPLMGetPrefsPath(pref_path);
@@ -834,11 +836,12 @@ XPluginReceiveMessage(XPLMPluginID in_from, long in_msg, void *in_param)
                 XPLMGetNthAircraftModel(XPLM_USER_AIRCRAFT, acf_file, path);
                 log_msg(acf_file);
 
-                acf_file[4] = '\0';     /* be safe */
+                acf_file[4] = '\0';
                 for (int i = 0; i < 4; i++)
                     acf_file[i] = toupper(acf_file[i]);
 
-                if ((0 == strcmp(acf_file, "A319")) || (0 == strcmp(acf_file, "A321"))) {
+                if ((0 == strcmp(acf_file, "A319")) || (0 == strcmp(acf_file, "A321")) ||
+                    (0 == strcmp(acf_file, "A340"))) {
                     XPLMGetSystemPath(path);
                     char *s = path + strlen(path);
 
@@ -847,7 +850,10 @@ XPluginReceiveMessage(XPLMPluginID in_from, long in_msg, void *in_param)
                     if (0 != access(path, F_OK))
                         return;
 
-                    log_msg("Detected ToLiss A319/A321");
+                    log_msg("Detected ToLiss A319/A321/A340");
+                    int l = XPLMGetDatab(acf_icao_dr, acf_icao, 0, sizeof(acf_icao) - 1);
+                    acf_icao[l] = '\0';
+                    log_msg("ToLiss ICAO is %d, %s", l, acf_icao);
 
                     XPLMMenuID menu = XPLMFindPluginsMenu();
                     int sub_menu = XPLMAppendMenuItem(menu, "Simbrief Connector", NULL, 1);
