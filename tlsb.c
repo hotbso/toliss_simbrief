@@ -376,7 +376,7 @@ fetch_ofp(void)
     }
 
     if ((0 == strcmp(ofp_info.aircraft_icao, acf_icao))
-        /* workaround for ToLiss A321 1.3: A"!N reports as A321 */
+        /* workaround for ToLiss A321 1.3: A21N reports as A321 */
         || ((0 == strcmp(ofp_info.aircraft_icao, "A21N")) && (0 == strcmp(acf_icao, "A321")))) {
         time_t tg = atol(ofp_info.time_generated);
         struct tm tm;
