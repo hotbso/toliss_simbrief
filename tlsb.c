@@ -387,8 +387,8 @@ fetch_ofp(void)
     #endif
         char line[100];
         /* strftime does not work for whatever reasons */
-        sprintf(line, "OFP generated at %4d-%02d-%02d %02d:%02d:%02d UTC",
-                       tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+        sprintf(line, "%s%s %s / OFP generated at %4d-%02d-%02d %02d:%02d:%02d UTC",
+                       ofp_info.icao_airline, ofp_info.flight_number, ofp_info.aircraft_icao, tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
                        tm.tm_hour, tm.tm_min, tm.tm_sec);
 
         XPSetWidgetDescriptor(status_line, line);
@@ -478,92 +478,93 @@ getofp_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, int
         static float label_color[] = { 0.0, 0.0, 0.0 };
         static float xfer_color[] = { 0.0, 0.5, 0.0 };
         static float bg_color[] = { 0.0, 0.3, 0.3 };
-        char str[20];
+        char str[80];
         int left, top, right, bottom;
 
         XPGetWidgetGeometry(display_widget, &left, &top, &right, &bottom);
         // log_msg("display_widget start %d %d %d %d", left, top, right, bottom);
 
-        int left_col = left + 5;
-        int right_col = left + 80;
+        int left_col[2] = { left + 5, left + 180 };
+        int right_col[2] = { left_col[0] + 75, left_col[1] + 75 };
         int y = top - 5;
 
-#define DL(TXT) \
-    y -= 15; \
-    XPLMDrawString(label_color, left_col, y, TXT, NULL, xplmFont_Proportional)
+#define DL(COL, TXT) \
+    if (COL == 0) y -= 15; \
+    XPLMDrawString(label_color, left_col[COL], y, TXT, NULL, xplmFont_Proportional)
 
-#define DX(field) \
-    XPLMDrawString(xfer_color, right_col, y, ofp_info.field, NULL, xplmFont_Basic)
+#define DX(COL, FIELD) \
+    XPLMDrawString(xfer_color, right_col[COL], y, ofp_info.FIELD, NULL, xplmFont_Basic)
 
-#define DS(str) \
-    XPLMDrawString(xfer_color, right_col, y, str, NULL, xplmFont_Basic)
+#define DF(COL, FIELD) \
+    XPLMDrawString(bg_color, right_col[COL], y, ofp_info.FIELD, NULL, xplmFont_Basic)
 
-        //DL("Pax:"); DF(right_col, max_passengers);
+#define DS(COL, STR) \
+    XPLMDrawString(bg_color, right_col[COL], y, STR, NULL, xplmFont_Basic)
+
         // D(right_col, oew);
-        DL("Pax:"); DX(pax_count);
-        DL("Cargo:"); DX(cargo);
-        DL("Fuel:"); DX(fuel_plan_ramp);
+        DL(0, "Pax:"); DX(0, pax_count);
+        DL(0, "Cargo:"); DX(0, cargo);
+        DL(0, "Fuel:"); DX(0, fuel_plan_ramp);
         // D(right_col, payload);
 
         y -= 30;
-#define DF(left, field) \
-    XPLMDrawString(bg_color, left, y, ofp_info.field, NULL, xplmFont_Basic)
 
         // D(aircraft_icao);
-        DL("Departure:"); DF(right_col, origin); DF(right_col + 50, origin_rwy);
-        DL("Destination:"); DF(right_col, destination); DF(right_col + 50, destination_rwy);
-        DL("Route:");
+        snprintf(str, sizeof(str), "%s/%s", ofp_info.origin, ofp_info.origin_rwy);
+        DL(0, "Departure:"); DS(0, str);
+        snprintf(str, sizeof(str), "%s/%s", ofp_info.destination, ofp_info.destination_rwy);
+        DL(0, "Destination:"); DS(0, str);
+        DL(0, "Route:");
 
-        y = format_route(bg_color, ofp_info.route, right_col, y);
+        y = format_route(bg_color, ofp_info.route, right_col[0], y);
 
-        DL("Trip time");
+        DL(0, "Trip time");
         if (ofp_info.est_time_enroute[0]) {
             int ttmin = (atoi(ofp_info.est_time_enroute) + 30) / 60;
             snprintf(str, sizeof(str), "%02d%02d", ttmin / 60, ttmin % 60);
-            DS(str);
+            DS(0, str);
         }
 
-        DL("CI:"); DF(right_col, ci);
-        DL("CRZ FL:"); DF(right_col, altitude);
+        int tropopause = atoi(ofp_info.tropopause);
+        snprintf(str, sizeof(str), "%d", (tropopause + 500)/1000 * 1000);
+        DL(0, "CI:"); DF(0, ci); DL(1, "TROPO:"); DS(1, str);
 
         int isa_dev = atoi(ofp_info.isa_dev);
         if (isa_dev < 0)
             snprintf(str, sizeof(str), "M%03d", -isa_dev);
         else
             snprintf(str, sizeof(str), "P%03d", isa_dev);
-        DL("ISA:"); DS(str);
 
-        int tropopause = atoi(ofp_info.tropopause);
-        snprintf(str, sizeof(str), "%d", (tropopause + 500)/1000 * 1000);
-        DL("TROPO:"); DS(str);
+        DL(0, "CRZ FL:"); DF(0, altitude); DL(1, "ISA:"); DS(1, str);
+
 
         int wind_component = atoi(ofp_info.wind_component);
         if (wind_component < 0)
             snprintf(str, sizeof(str), "M%03d", -wind_component);
         else
             snprintf(str, sizeof(str), "P%03d", wind_component);
-        DL("WC:"); DS(str);
+        DL(0, "WC:"); DS(0, str);
 
         y -= 5;
 
-        DL("Alternate:"); DF(right_col, alternate);
-        DL("Alt Route:");
-        y = format_route(bg_color, ofp_info.alt_route, right_col, y);
+        DL(0, "Alternate:"); DF(0, alternate);
+        DL(0, "Alt Route:");
+        y = format_route(bg_color, ofp_info.alt_route, right_col[0], y);
         y -= 5;
 
         if (msg_line_1[0]) {
             y -= 15;
-            XPLMDrawString(bg_color, left_col, y, msg_line_1, NULL, xplmFont_Proportional);
+            XPLMDrawString(bg_color, left_col[0], y, msg_line_1, NULL, xplmFont_Proportional);
         }
 
         if (msg_line_2[0]) {
             y -= 15;
-            XPLMDrawString(bg_color, left_col, y, msg_line_2, NULL, xplmFont_Proportional);
+            XPLMDrawString(bg_color, left_col[0], y, msg_line_2, NULL, xplmFont_Proportional);
         }
 
         if (msg_line_3[0]) {
             y -= 15;
-            XPLMDrawString(bg_color, left_col, y, msg_line_3, NULL, xplmFont_Proportional);
+            XPLMDrawString(bg_color, left_col[0], y, msg_line_3, NULL, xplmFont_Proportional);
         }
 
         /* adjust height of window */

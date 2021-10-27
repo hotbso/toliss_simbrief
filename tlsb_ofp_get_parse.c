@@ -42,6 +42,8 @@ tlsb_dump_ofp_info(ofp_info_t *ofp_info)
     if (0 == strcmp(ofp_info->status, "Success")) {
 #define L(field) log_msg(#field ": %s", ofp_info->field)
 
+        L(icao_airline);
+        L(flight_number);
         L(aircraft_icao);
         L(origin);
         L(destination);
@@ -180,6 +182,8 @@ tlsb_ofp_get_parse(const char *pilot_id, ofp_info_t *ofp_info)
      }
 
     if (POSITION("general")) {
+        EXTRACT("icao_airline", icao_airline);
+        EXTRACT("flight_number", flight_number);
         EXTRACT("costindex", ci);
         EXTRACT("initial_altitude", altitude);
         EXTRACT("avg_tropopause", tropopause);

@@ -29,6 +29,8 @@ typedef struct _ofp_info
 {
     int valid;
     char status[100];
+    char icao_airline[6];
+    char flight_number[10];
     char aircraft_icao[10];
     char max_passengers[10];
     char fuel_plan_ramp[10];
