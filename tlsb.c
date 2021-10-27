@@ -478,8 +478,9 @@ getofp_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, int
         static float label_color[] = { 0.0, 0.0, 0.0 };
         static float xfer_color[] = { 0.0, 0.5, 0.0 };
         static float bg_color[] = { 0.0, 0.3, 0.3 };
-
+        char str[20];
         int left, top, right, bottom;
+
         XPGetWidgetGeometry(display_widget, &left, &top, &right, &bottom);
         // log_msg("display_widget start %d %d %d %d", left, top, right, bottom);
 
@@ -494,6 +495,9 @@ getofp_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, int
 #define DX(field) \
     XPLMDrawString(xfer_color, right_col, y, ofp_info.field, NULL, xplmFont_Basic)
 
+#define DS(str) \
+    XPLMDrawString(xfer_color, right_col, y, str, NULL, xplmFont_Basic)
+
         //DL("Pax:"); DF(right_col, max_passengers);
         // D(right_col, oew);
         DL("Pax:"); DX(pax_count);
@@ -507,21 +511,39 @@ getofp_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, int
 
         // D(aircraft_icao);
         DL("Departure:"); DF(right_col, origin); DF(right_col + 50, origin_rwy);
-        DL("Destination"); DF(right_col, destination); DF(right_col + 50, destination_rwy);
+        DL("Destination:"); DF(right_col, destination); DF(right_col + 50, destination_rwy);
         DL("Route:");
 
         y = format_route(bg_color, ofp_info.route, right_col, y);
 
         DL("Trip time");
         if (ofp_info.est_time_enroute[0]) {
-            char ttstr[10];
             int ttmin = (atoi(ofp_info.est_time_enroute) + 30) / 60;
-            sprintf(ttstr, "%02d%02d", ttmin / 60, ttmin % 60);
-            XPLMDrawString(bg_color, right_col, y, ttstr, NULL, xplmFont_Basic);
+            snprintf(str, sizeof(str), "%02d%02d", ttmin / 60, ttmin % 60);
+            DS(str);
         }
 
-        DL("CI"); DF(right_col, ci);
+        DL("CI:"); DF(right_col, ci);
         DL("CRZ FL:"); DF(right_col, altitude);
+
+        int isa_dev = atoi(ofp_info.isa_dev);
+        if (isa_dev < 0)
+            snprintf(str, sizeof(str), "M%03d", -isa_dev);
+        else
+            snprintf(str, sizeof(str), "P%03d", isa_dev);
+        DL("ISA:"); DS(str);
+
+        int tropopause = atoi(ofp_info.tropopause);
+        snprintf(str, sizeof(str), "%d", (tropopause + 500)/1000 * 1000);
+        DL("TROPO:"); DS(str);
+
+        int wind_component = atoi(ofp_info.wind_component);
+        if (wind_component < 0)
+            snprintf(str, sizeof(str), "M%03d", -wind_component);
+        else
+            snprintf(str, sizeof(str), "P%03d", wind_component);
+        DL("WC:"); DS(str);
+
         y -= 5;
 
         DL("Alternate:"); DF(right_col, alternate);

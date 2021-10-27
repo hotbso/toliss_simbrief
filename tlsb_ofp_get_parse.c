@@ -47,6 +47,9 @@ tlsb_dump_ofp_info(ofp_info_t *ofp_info)
         L(destination);
         L(alternate);
         L(ci);
+        L(tropopause);
+        L(isa_dev);
+        L(wind_component);
         L(route);
         L(alt_route);
         L(max_passengers);
@@ -179,6 +182,9 @@ tlsb_ofp_get_parse(const char *pilot_id, ofp_info_t *ofp_info)
     if (POSITION("general")) {
         EXTRACT("costindex", ci);
         EXTRACT("initial_altitude", altitude);
+        EXTRACT("avg_tropopause", tropopause);
+        EXTRACT("avg_wind_comp", wind_component);
+        EXTRACT("avg_temp_dev", isa_dev);
         EXTRACT("route", route);
     }
 

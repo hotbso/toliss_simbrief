@@ -39,6 +39,9 @@ typedef struct _ofp_info
     char destination_rwy[10];
     char ci[10];
     char altitude[10];
+    char tropopause[10];
+    char isa_dev[10];
+    char wind_component[10];
     char oew[10];
     char pax_count[10];
     char cargo[10];
