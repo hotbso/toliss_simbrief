@@ -46,7 +46,7 @@ SOFTWARE.
 
 #define UNUSED(x) (void)(x)
 
-#define VERSION "1.00b9-dev"
+#define VERSION "1.00"
 
 static float flight_loop_cb(float unused1, float unused2, int unused3, void *unused4);
 
@@ -612,7 +612,7 @@ create_widget()
     getofp_widget_ctx.h = height;
 
     getofp_widget = XPCreateWidget(left, top, left + width, top - height,
-                                 0, "Toliss Simbrief Connector", 1, NULL, xpWidgetClass_MainWindow);
+                                 0, "Toliss Simbrief Connector " VERSION, 1, NULL, xpWidgetClass_MainWindow);
     getofp_widget_ctx.widget = getofp_widget;
 
     XPSetWidgetProperty(getofp_widget, xpProperty_MainWindowHasCloseBoxes, 1);
