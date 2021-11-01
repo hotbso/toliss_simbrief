@@ -46,7 +46,7 @@ SOFTWARE.
 
 #define UNUSED(x) (void)(x)
 
-#define VERSION "1.00"
+#define VERSION "1.01-dev"
 
 static float flight_loop_cb(float unused1, float unused2, int unused3, void *unused4);
 
@@ -84,7 +84,6 @@ static XPLMDataRef no_pax_dr, pax_distrib_dr, aft_cargo_dr, fwd_cargo_dr,
                    popup_height_dr,
                    acf_icao_dr;
 static XPLMCommandRef set_weight_cmdr, iscs_cmdr;  /* ToLiss commands */
-static XPLMCommandRef fetch_cmdr, toggle_cmdr, fetch_xfer_cmdr;
 
 static XPLMCreateFlightLoop_t create_flight_loop =
 {
@@ -842,7 +841,6 @@ XPluginStart(char *out_name, char *out_sig, char *out_desc)
 PLUGIN_API void
 XPluginStop(void)
 {
-    save_pref();
 }
 
 
@@ -891,22 +889,24 @@ XPluginReceiveMessage(XPLMPluginID in_from, long in_msg, void *in_param)
                     acf_icao[l] = '\0';
                     log_msg("ToLiss ICAO is %d, %s", l, acf_icao);
 
-                    XPLMMenuID menu = XPLMFindPluginsMenu();
-                    int sub_menu = XPLMAppendMenuItem(menu, "Simbrief Connector", NULL, 1);
-                    tlsb_menu = XPLMCreateMenu("Simbrief Connector", menu, sub_menu, menu_cb, NULL);
-                    XPLMAppendMenuItem(tlsb_menu, "Configure", &conf_widget, 0);
-                    XPLMAppendMenuItem(tlsb_menu, "Fetch OFP", &getofp_widget, 0);
+                    if (NULL == tlsb_menu) {
+                        XPLMMenuID menu = XPLMFindPluginsMenu();
+                        int sub_menu = XPLMAppendMenuItem(menu, "Simbrief Connector", NULL, 1);
+                        tlsb_menu = XPLMCreateMenu("Simbrief Connector", menu, sub_menu, menu_cb, NULL);
+                        XPLMAppendMenuItem(tlsb_menu, "Configure", &conf_widget, 0);
+                        XPLMAppendMenuItem(tlsb_menu, "Show widget", &getofp_widget, 0);
 
-                    toggle_cmdr = XPLMCreateCommand("tlsb/toggle", "Toggle simbrief connector widget");
-                    XPLMRegisterCommandHandler(toggle_cmdr, toggle_cmd_cb, 0, NULL);
+                        XPLMCommandRef cmdr = XPLMCreateCommand("tlsb/toggle", "Toggle simbrief connector widget");
+                        XPLMRegisterCommandHandler(cmdr, toggle_cmd_cb, 0, NULL);
 
-                    fetch_cmdr = XPLMCreateCommand("tlsb/fetch", "Fetch ofp data and show in widget");
-                    XPLMRegisterCommandHandler(fetch_cmdr, fetch_cmd_cb, 0, NULL);
+                        cmdr = XPLMCreateCommand("tlsb/fetch", "Fetch ofp data and show in widget");
+                        XPLMRegisterCommandHandler(cmdr, fetch_cmd_cb, 0, NULL);
 
-                    fetch_xfer_cmdr = XPLMCreateCommand("tlsb/fetch_xfer", "Fetch ofp data and xfer load data");
-                    XPLMRegisterCommandHandler(fetch_xfer_cmdr, fetch_xfer_cmd_cb, 0, NULL);
+                        cmdr = XPLMCreateCommand("tlsb/fetch_xfer", "Fetch ofp data and xfer load data");
+                        XPLMRegisterCommandHandler(cmdr, fetch_xfer_cmd_cb, 0, NULL);
 
-                    flight_loop_id = XPLMCreateFlightLoop(&create_flight_loop);
+                        flight_loop_id = XPLMCreateFlightLoop(&create_flight_loop);
+                    }
                }
             }
         break;
