@@ -28,6 +28,7 @@ SOFTWARE.
 typedef struct _ofp_info
 {
     int valid;
+    char units[10];
     char status[100];
     char icao_airline[6];
     char flight_number[10];

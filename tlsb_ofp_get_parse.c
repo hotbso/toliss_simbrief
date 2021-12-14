@@ -41,7 +41,7 @@ tlsb_dump_ofp_info(ofp_info_t *ofp_info)
 {
     if (0 == strcmp(ofp_info->status, "Success")) {
 #define L(field) log_msg(#field ": %s", ofp_info->field)
-
+        L(units);
         L(icao_airline);
         L(flight_number);
         L(aircraft_icao);
@@ -160,6 +160,7 @@ tlsb_ofp_get_parse(const char *pilot_id, ofp_info_t *ofp_info)
 
     if (POSITION("params")) {
         EXTRACT("time_generated", time_generated);
+        EXTRACT("units", units);
     }
 
     if (POSITION("aircraft")) {

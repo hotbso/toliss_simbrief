@@ -46,7 +46,9 @@ SOFTWARE.
 
 #define UNUSED(x) (void)(x)
 
-#define VERSION "1.01-dev"
+#define VERSION "1.1-dev-a"
+
+#define LB_2_KG 0.45359237    /* imperial to metric */
 
 static float flight_loop_cb(float unused1, float unused2, int unused3, void *unused4);
 
@@ -113,6 +115,8 @@ map_datarefs()
 
     dr_mapped = 1;
 
+    /* the weight related datarefs are metric regardless of the setting to "imperial" */
+
     if (NULL == (no_pax_dr = XPLMFindDataRef("AirbusFBW/NoPax"))) goto err;
     if (NULL == (pax_distrib_dr = XPLMFindDataRef("AirbusFBW/PaxDistrib"))) goto err;
     if (NULL == (aft_cargo_dr = XPLMFindDataRef("AirbusFBW/AftCargo")))goto err;
@@ -142,10 +146,17 @@ xfer_load_data()
 
     log_msg("Xfer load data to ISCS");
 
+    float cargo = 0.5 * atof(ofp_info.cargo);
+    float fuel = atof(ofp_info.fuel_plan_ramp);
+
+    if (0 == strcmp("lbs", ofp_info.units)) {
+        cargo *= LB_2_KG;
+        fuel *= LB_2_KG;
+    }
+
     XPLMSetDatai(no_pax_dr, atoi(ofp_info.pax_count));
     XPLMSetDataf(pax_distrib_dr, 0.5);
-    XPLMSetDataf(write_fob_dr, atof(ofp_info.fuel_plan_ramp));
-    float cargo = 0.5 * atof(ofp_info.cargo);
+    XPLMSetDataf(write_fob_dr, fuel);
     XPLMSetDataf(fwd_cargo_dr, cargo);
     XPLMSetDataf(aft_cargo_dr, cargo);
     XPLMCommandOnce(set_weight_cmdr);
