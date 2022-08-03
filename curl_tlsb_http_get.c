@@ -29,7 +29,7 @@ SOFTWARE.
 #include "tlsb.h"
 
 
-static size_t discard_write_cb(char *ptr, size_t size, size_t nmemb, void *userdata)
+static size_t discard_write_cb(const void *ptr, size_t size, size_t nmemb, FILE *userdata)
 {
     return size * nmemb;
 }
