@@ -47,7 +47,7 @@ typedef struct _ofp_info
     char wind_component[10];
     char oew[10];
     char pax_count[10];
-    char cargo[10];
+    char freight[10];
     char payload[10];
     char route[1000];
     char alt_route[1000];

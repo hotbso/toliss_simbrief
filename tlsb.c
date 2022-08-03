@@ -46,7 +46,7 @@ SOFTWARE.
 
 #define UNUSED(x) (void)(x)
 
-#define VERSION "1.1-dev-a"
+#define VERSION "1.1"
 
 #define LB_2_KG 0.45359237    /* imperial to metric */
 
@@ -146,19 +146,19 @@ xfer_load_data()
 
     log_msg("Xfer load data to ISCS");
 
-    float cargo = 0.5 * atof(ofp_info.cargo);
+    float freight = 0.5 * atof(ofp_info.freight);
     float fuel = atof(ofp_info.fuel_plan_ramp);
 
     if (0 == strcmp("lbs", ofp_info.units)) {
-        cargo *= LB_2_KG;
+        freight *= LB_2_KG;
         fuel *= LB_2_KG;
     }
 
     XPLMSetDatai(no_pax_dr, atoi(ofp_info.pax_count));
     XPLMSetDataf(pax_distrib_dr, 0.5);
     XPLMSetDataf(write_fob_dr, fuel);
-    XPLMSetDataf(fwd_cargo_dr, cargo);
-    XPLMSetDataf(aft_cargo_dr, cargo);
+    XPLMSetDataf(fwd_cargo_dr, freight);
+    XPLMSetDataf(aft_cargo_dr, freight);
     XPLMCommandOnce(set_weight_cmdr);
 
     /* if the iscs is open togle it twice to refresh data */
@@ -513,7 +513,7 @@ getofp_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, int
 
         // D(right_col, oew);
         DL(0, "Pax:"); DX(0, pax_count);
-        DL(0, "Cargo:"); DX(0, cargo);
+        DL(0, "Cargo:"); DX(0, freight);
         DL(0, "Fuel:"); DX(0, fuel_plan_ramp);
         // D(right_col, payload);
 

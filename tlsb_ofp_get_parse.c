@@ -58,7 +58,7 @@ tlsb_dump_ofp_info(ofp_info_t *ofp_info)
         L(fuel_plan_ramp);
         L(oew);
         L(pax_count);
-        L(cargo);
+        L(freight);
         L(payload);
         L(est_time_enroute);
         L(sb_path);
@@ -201,7 +201,7 @@ tlsb_ofp_get_parse(const char *pilot_id, ofp_info_t *ofp_info)
    if (POSITION("weights")) {
         EXTRACT("oew", oew);
         EXTRACT("pax_count", pax_count);
-        EXTRACT("cargo", cargo);
+        EXTRACT("freight_added", freight);
         EXTRACT("payload", payload);
     }
 
