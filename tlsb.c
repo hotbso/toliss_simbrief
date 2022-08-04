@@ -1,7 +1,7 @@
 /*
 MIT License
 
-Copyright (c) 2019, 2021 Holger Teutsch
+Copyright (c) 2019, 2021, 2022 Holger Teutsch
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -46,7 +46,7 @@ SOFTWARE.
 
 #define UNUSED(x) (void)(x)
 
-#define VERSION "1.1"
+#define VERSION "1.20-dev"
 
 #define LB_2_KG 0.45359237    /* imperial to metric */
 
@@ -62,7 +62,8 @@ static XPLMMenuID tlsb_menu;
 
 #define MSG_GET_OFP (xpMsg_UserStart + 1)
 static XPWidgetID getofp_widget, display_widget, getofp_btn,
-                  status_line, xfer_load_btn;
+                  status_line,
+                  xfer_fuel_btn, xfer_payload_btn, xfer_all_btn;
 static XPWidgetID conf_widget, pilot_id_input, conf_ok_btn,
                   conf_downl_pdf_btn, conf_downl_pdf_path, conf_downl_pdf_paste_btn, conf_downl_fpl_btn;
 
@@ -86,6 +87,7 @@ static XPLMDataRef no_pax_dr, pax_distrib_dr, aft_cargo_dr, fwd_cargo_dr,
                    popup_height_dr,
                    acf_icao_dr;
 static XPLMCommandRef set_weight_cmdr, iscs_cmdr;  /* ToLiss commands */
+typedef enum xfer_mode_e { XFER_FUEL, XFER_PAYLOAD, XFER_ALL } xfer_mode_t;
 
 static XPLMCreateFlightLoop_t create_flight_loop =
 {
@@ -135,7 +137,7 @@ err:
 }
 
 static void
-xfer_load_data()
+xfer_load_data(xfer_mode_t xfer_mode)
 {
     if (!ofp_info.valid)
         return;
@@ -144,21 +146,27 @@ xfer_load_data()
     if (error_disabled)
         return;
 
-    log_msg("Xfer load data to ISCS");
-
-    float freight = 0.5 * atof(ofp_info.freight);
     float fuel = atof(ofp_info.fuel_plan_ramp);
-
+    float freight = 0.5 * atof(ofp_info.freight);
     if (0 == strcmp("lbs", ofp_info.units)) {
         freight *= LB_2_KG;
         fuel *= LB_2_KG;
     }
 
-    XPLMSetDatai(no_pax_dr, atoi(ofp_info.pax_count));
-    XPLMSetDataf(pax_distrib_dr, 0.5);
-    XPLMSetDataf(write_fob_dr, fuel);
-    XPLMSetDataf(fwd_cargo_dr, freight);
-    XPLMSetDataf(aft_cargo_dr, freight);
+    if (xfer_mode == XFER_ALL || xfer_mode == XFER_FUEL) {
+        log_msg("Xfer fuel data to ISCS");
+        XPLMSetDataf(write_fob_dr, fuel);
+    }
+
+    if (xfer_mode == XFER_ALL || xfer_mode == XFER_PAYLOAD) {
+        log_msg("Xfer payload data to ISCS");
+
+        XPLMSetDatai(no_pax_dr, atoi(ofp_info.pax_count));
+        XPLMSetDataf(pax_distrib_dr, 0.5);
+        XPLMSetDataf(fwd_cargo_dr, freight);
+        XPLMSetDataf(aft_cargo_dr, freight);
+    }
+
     XPLMCommandOnce(set_weight_cmdr);
 
     /* if the iscs is open togle it twice to refresh data */
@@ -478,8 +486,18 @@ getofp_widget_cb(XPWidgetMessage msg, XPWidgetID widget_id, intptr_t param1, int
         return 1;
     }
 
-    if ((widget_id == xfer_load_btn) && (msg == xpMsg_PushButtonPressed)) {
-        xfer_load_data();
+    if ((widget_id == xfer_all_btn) && (msg == xpMsg_PushButtonPressed)) {
+        xfer_load_data(XFER_ALL);
+        return 1;
+    }
+
+    if ((widget_id == xfer_fuel_btn) && (msg == xpMsg_PushButtonPressed)) {
+        xfer_load_data(XFER_FUEL);
+        return 1;
+    }
+
+    if ((widget_id == xfer_payload_btn) && (msg == xpMsg_PushButtonPressed)) {
+        xfer_load_data(XFER_PAYLOAD);
         return 1;
     }
 
@@ -642,9 +660,20 @@ create_widget()
     display_widget = XPCreateCustomWidget(left + 10, top, left + width -20, top - height + 10,
                                            1, "", 0, getofp_widget, getofp_widget_cb);
     top -= 50;
-    xfer_load_btn = XPCreateWidget(left + 10, top, left + 160, top - 30,
+    left1 = left + 10;
+    xfer_fuel_btn = XPCreateWidget(left1, top, left1 + 50, top - 30,
+                              1, "Refuel", 0, getofp_widget, xpWidgetClass_Button);
+    XPAddWidgetCallback(xfer_fuel_btn, getofp_widget_cb);
+
+    left1 += 60;
+    xfer_payload_btn = XPCreateWidget(left1, top, left1 + 50, top - 30,
+                              1, "Board", 0, getofp_widget, xpWidgetClass_Button);
+    XPAddWidgetCallback(xfer_payload_btn, getofp_widget_cb);
+
+    left1 += 60;
+    xfer_all_btn = XPCreateWidget(left1, top, left1 + 150, top - 30,
                               1, "Xfer Load data to ISCS", 0, getofp_widget, xpWidgetClass_Button);
-    XPAddWidgetCallback(xfer_load_btn, getofp_widget_cb);
+    XPAddWidgetCallback(xfer_all_btn, getofp_widget_cb);
 }
 
 static void
@@ -780,7 +809,7 @@ fetch_xfer_cmd_cb(XPLMCommandRef cmdr, XPLMCommandPhase phase, void *ref)
         return 0;
     }
 
-    xfer_load_data();
+    xfer_load_data(XFER_ALL);
     return 0;
 }
 
